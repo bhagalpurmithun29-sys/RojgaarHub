@@ -1,6 +1,6 @@
-# 🏗️ RozgaarHub: Advanced On-Demand Daily Labour Ecosystem
+# 🏗️ RojgaarHub: Advanced On-Demand Daily Labour Ecosystem
 
-RozgaarHub is a state-of-the-art, premium, production-ready on-demand daily labour ecosystem built to connect customers and contractors with certified professionals (Electricians, Plumbers, Carpenters, Painters, Cleaners). Designed with robust **AI security phishing shields**, **biometric KYC Aadhaar uploads**, **real Web Audio SOS dispatch beacons**, **offline-first draft synchronization engines**, and a fully unified **Enterprise Admin Console**.
+RojgaarHub is a state-of-the-art, premium, production-ready on-demand daily labour ecosystem built to connect customers and contractors with certified professionals (Electricians, Plumbers, Carpenters, Painters, Cleaners). Designed with robust **AI security phishing shields**, **biometric KYC Aadhaar uploads**, **real Web Audio SOS dispatch beacons**, **offline-first draft synchronization engines**, and a fully unified **Enterprise Admin Console**.
 
 ---
 
@@ -21,18 +21,22 @@ A unified command center for complete platform operations:
 *   **💬 NLP Phishing & Spam Scanner**: Interactive scanning portal with real-time keyword parsing (OTP requests, cash deviations, phishing links) and auto-redacting message buffers.
 *   **🔬 Anomaly Simulator**: Simulate rapid bot bookings or out-of-area cash deviations to test system response.
 
-### 3. 🔔 In-App Notifications Preference Hub (`/notifications`)
+### 3. 🛡️ Authentication-Gated Portal Gating & Redirection
+*   **🔒 Bulletproof Dashboard Protection**: Enforces robust `useEffect` auth gates across **all sensitive dashboard routes** (`/bookings`, `/wallet`, `/chat`, `/admin`, `/profile`, `/profile/setup`, `/notifications`, `/security`, `/safety-support`, `/search`). Any unauthorized guest accessing them is intercepted and directed to Login.
+*   **🎯 State-Preserving Dynamic Destination Redirects**: Automatically records the target route context in the URL params (`?redirect=...`) and redirects users instantly back to their original screen upon successful authentication, avoiding navigation loops.
+
+### 4. 🔔 In-App Notifications Preference Hub (`/notifications`)
 *   **⚙️ Alert Settings**: Customized toggles for *Booking milestone alerts*, *Live chats messages*, and *Promotions surcharges*.
 *   **📂 Precision Filters**: Search keyword matches, filter category tabs, and segregate read/unread logs.
 *   **🧪 Pushes Simulator**: Custom sandbox to fire simulated alerts, showing permission-blocking handlers.
 
-### 4. 👤 Profile Settings & Operations Deck (`/profile`)
+### 5. 👤 Profile Settings & Operations Deck (`/profile`)
 *   **⚠️ Soft Account Deletion**: Deactivates user account into a 30-day grace recovery queue. Users can restore booking histories, credentials, and wallet balances on click.
 *   **🏠 Address Book Tagging**: Register and label addresses categorized under `Home 🏠`, `Office 🏢`, and `Construction Site 🏗️`.
 *   **🌦️ Scaffolding Weather Locks**: Active weather condition updates (`Sunny`, `Rainy`, `Lightning`). Rainy/Lightning states automatically lock painter and plumber high-altitude scaffolding operations.
 *   **🏗️ Customized Requirements Marketplace**: Customers post custom job requirements; nearby professionals pitch bidding quotes; customers accept bids and assign platform contracts dynamically.
 
-### 5. 🚨 Safety & Offline Support (`/safety-support`)
+### 6. 🚨 Safety & Offline Support (`/safety-support`)
 *   **🚨 SOS Emergency Beacons**: Generates real synthesized siren audio frequencies using native Web Audio API oscillators.
 *   **🔌 Offline Draft Synchronization**: Auto-saves active ticket inputs during network disruptions. Submitting offline pushes tickets safely into the LocalStorage draft queue, auto-syncing seamlessly once network status is restored.
 
@@ -41,8 +45,8 @@ A unified command center for complete platform operations:
 ## 🛠️ Technology Stack & Libraries
 
 ### 💻 Client (Frontend)
-*   **Framework**: Next.js (TypeScript, App Router)
-*   **Styling**: Tailwind CSS & Glassmorphism design aesthetics
+*   **Framework**: Next.js 16 (TypeScript, App Router)
+*   **Styling**: Vanilla CSS & modern HSL tailwind grid architectures
 *   **Icons**: Lucide Icons & Emojis
 *   **Compilation**: Clean ESM/CommonJS modules (0 compiler warnings)
 
@@ -64,8 +68,8 @@ A unified command center for complete platform operations:
 ### Step 1: Clone and Repository Setup
 Ensure the decoupled workspace directories are prepared:
 ```bash
-git clone https://github.com/your-username/RozgaarHub.git
-cd RozgaarHub
+git clone https://github.com/bhagalpurmithun29-sys/RojgaarHub.git
+cd RojgaarHub
 ```
 
 ### Step 2: Configure Server Settings
@@ -76,7 +80,7 @@ cd RozgaarHub
 2. Create your `.env` configuration file based on `.env.example`:
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/rozgaarhub
+   MONGO_URI=mongodb://localhost:27017/rojgaarhub
    JWT_SECRET=superSecretSignatureHexToken9901
    CLIENT_URL=http://localhost:3000
    ```
@@ -85,7 +89,7 @@ cd RozgaarHub
    npm install
    npm run build
    ```
-4. Start the server in developer mode (this auto-seeds the admin account: `admin@rozgaarhub.com` / `Admin@123`):
+4. Start the server in developer mode (this auto-seeds the admin account: `admin@rojgaarhub.com` / `Admin@123`):
    ```bash
    npm run dev
    ```
@@ -103,7 +107,7 @@ cd RozgaarHub
    ```bash
    npm run dev
    ```
-4. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**!
+4. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)** (or the output port)!
 
 ---
 
@@ -116,4 +120,4 @@ All configurations are built in compliance with modern production specifications
 ---
 
 ## 📜 License
-This project is licensed under the ISC License. Built with ❤️ by the RozgaarHub Development Team.
+This project is licensed under the ISC License. Built with ❤️ by the RojgaarHub Development Team.
