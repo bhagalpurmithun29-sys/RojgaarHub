@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import User, { UserRole } from '../models/User';
-import bcrypt from 'bcryptjs';
 
 const seedAdmin = async () => {
   try {
@@ -8,14 +7,12 @@ const seedAdmin = async () => {
     const existingAdmin = await User.findOne({ email: adminEmail });
     
     if (!existingAdmin) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('Admin@123', salt);
-      
+      // Pass plain password — the pre-save hook in User.ts will hash it exactly once
       await User.create({
         name: 'System Admin',
         email: adminEmail,
         phone: '9999999999',
-        passwordHash: passwordHash,
+        passwordHash: 'Admin@123',
         role: UserRole.ADMIN,
         isVerified: true,
         walletBalance: 100000

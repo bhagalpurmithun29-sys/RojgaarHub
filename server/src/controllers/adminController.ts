@@ -29,12 +29,30 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
       .filter(p => p.paymentStatus === 'success')
       .reduce((sum, p) => sum + (p.platformFee || 0), 0);
 
+    const totalTransactionVolume = payments
+      .filter(p => p.paymentStatus === 'success')
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const totalFees = payments
+      .filter(p => p.paymentStatus === 'success')
+      .reduce((sum, p) => sum + (p.platformFee || 0) + (p.tax || 0), 0);
+
     const pendingKyc = await LabourProfile.find({ kycStatus: 'pending' }).populate('user', 'name email');
+
+    // Fetch all users and profiles for dashboard registry mapping
+    const usersList = await User.find({}).select('-passwordHash').lean();
+    const profilesList = await LabourProfile.find({}).lean();
 
     // Retrieve from database
     const featureFlags = await FeatureFlag.find({});
     const cmsPages = await CmsPage.find({});
     const auditLogs = await AuditLog.find({}).sort({ createdAt: -1 }).limit(20).populate('adminId', 'name email');
+
+    // Category breakdown from booking service categories
+    const bookingCategories = await Booking.aggregate([
+      { $group: { _id: '$serviceCategory', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
 
     res.json({
       stats: {
@@ -43,12 +61,93 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
         totalContractors,
         activeBookings,
         platformRevenue,
+        totalTransactionVolume,
+        totalFees,
       },
       pendingKyc,
+      users: usersList,
+      profiles: profilesList,
       featureFlags,
       cmsPages,
       auditLogs,
+      bookingCategories,
     });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get real transactions ledger with populated user names
+// @route   GET /api/admin/transactions
+// @access  Private (Admin)
+export const getTransactions = async (req: AuthRequest, res: Response) => {
+  try {
+    const payments = await Payment.find({})
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('customerId', 'name email')
+      .populate({
+        path: 'bookingId',
+        populate: { path: 'labourId', select: 'name' }
+      })
+      .lean();
+
+    const mapped = payments.map((p: any) => ({
+      id: `TXN-${p._id.toString().slice(-6).toUpperCase()}`,
+      customer: p.customerId?.name || 'Unknown Customer',
+      provider: p.bookingId?.labourId?.name || 'Pending Assignment',
+      amount: p.amount || 0,
+      fee: p.platformFee || 0,
+      tax: p.tax || 0,
+      commission: Math.round((p.amount || 0) * 0.15),
+      status: p.paymentStatus === 'success' ? 'Completed' : p.paymentStatus === 'refunded' ? 'Refunded' : 'Pending',
+      date: new Date(p.createdAt).toISOString().split('T')[0],
+      method: p.paymentMethod || 'wallet',
+    }));
+
+    const totalVolume = payments
+      .filter((p: any) => p.paymentStatus === 'success')
+      .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+
+    const totalFees = payments
+      .filter((p: any) => p.paymentStatus === 'success')
+      .reduce((sum: number, p: any) => sum + (p.platformFee || 0), 0);
+
+    const totalCommission = payments
+      .filter((p: any) => p.paymentStatus === 'success')
+      .reduce((sum: number, p: any) => sum + Math.round((p.amount || 0) * 0.15), 0);
+
+    res.json({ transactions: mapped, totalVolume, totalFees, totalCommission });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get daily user signups for the past 7 days
+// @route   GET /api/admin/signups
+// @access  Private (Admin)
+export const getDailySignups = async (req: AuthRequest, res: Response) => {
+  try {
+    const days: { label: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const start = new Date();
+      start.setDate(start.getDate() - i);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+
+      const count = await User.countDocuments({
+        createdAt: { $gte: start, $lte: end },
+        role: { $ne: UserRole.ADMIN }
+      });
+
+      days.push({
+        label: start.toLocaleDateString('en-IN', { weekday: 'short' }),
+        count,
+      });
+    }
+    res.json({ days });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -103,6 +202,13 @@ export const approveKYC = async (req: AuthRequest, res: Response) => {
 
     profile.kycStatus = status;
     await profile.save();
+
+    // Also update associated User's isVerified property
+    if (status === 'approved') {
+      await User.findByIdAndUpdate(profile.user, { isVerified: true });
+    } else if (status === 'rejected') {
+      await User.findByIdAndUpdate(profile.user, { isVerified: false });
+    }
 
     // Log action to persistent AuditLog collection
     await AuditLog.create({

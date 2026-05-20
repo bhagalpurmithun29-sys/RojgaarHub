@@ -6,6 +6,8 @@ import {
   approveKYC,
   toggleFeatureFlag,
   updateCMS,
+  getTransactions,
+  getDailySignups,
 } from '../controllers/adminController';
 
 const router = express.Router();
@@ -14,6 +16,8 @@ const router = express.Router();
 router.use(protect, authorize('admin'));
 
 router.get('/stats', getSystemStats);
+router.get('/transactions', getTransactions);
+router.get('/signups', getDailySignups);
 router.put('/users/:id/status', updateUserStatus);
 router.put('/kyc/:profileId', approveKYC);
 router.put('/feature-flags', toggleFeatureFlag);
