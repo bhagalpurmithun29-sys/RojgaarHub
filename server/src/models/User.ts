@@ -21,7 +21,24 @@ export interface IUser extends Document {
   googleId?: string;
   profileImage?: string;
   language?: string;
+  username?: string;
+  gender?: string;
+  dateOfBirth?: Date;
+  kycStatus?: string;
+  trustScore?: number;
+  reliabilityScore?: number;
   status?: string;
+  statistics?: {
+    totalBookings: number;
+    activeBookings: number;
+    completedBookings: number;
+    cancelledBookings: number;
+    totalSpent: number;
+    favouriteLabourCount: number;
+  };
+  rating?: number;
+  reviewsReceived?: number;
+  cancellationRate?: number;
   notificationSettings?: {
     booking: boolean;
     chat: boolean;
@@ -82,6 +99,32 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: '',
     },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+    kycStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    trustScore: {
+      type: Number,
+      default: 0,
+    },
+    reliabilityScore: {
+      type: Number,
+      default: 0,
+    },
     language: {
       type: String,
       default: 'en',
@@ -90,6 +133,26 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ['active', 'inactive', 'suspended', 'deleted'],
       default: 'active',
+    },
+    statistics: {
+      totalBookings: { type: Number, default: 0 },
+      activeBookings: { type: Number, default: 0 },
+      completedBookings: { type: Number, default: 0 },
+      cancelledBookings: { type: Number, default: 0 },
+      totalSpent: { type: Number, default: 0 },
+      favouriteLabourCount: { type: Number, default: 0 },
+    },
+    rating: {
+      type: Number,
+      default: 0,
+    },
+    reviewsReceived: {
+      type: Number,
+      default: 0,
+    },
+    cancellationRate: {
+      type: Number,
+      default: 0,
     },
     notificationSettings: {
       booking: { type: Boolean, default: true },

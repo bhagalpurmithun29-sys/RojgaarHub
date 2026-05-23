@@ -1,4 +1,5 @@
 import express from 'express';
+import { protect } from '../middlewares/authMiddleware';
 import { 
   registerUser, 
   authUser, 
@@ -8,7 +9,9 @@ import {
   sendOTP, 
   verifyOTP, 
   logoutUser, 
-  logoutAllDevices 
+  logoutAllDevices,
+  getUserProfile,
+  updateUserProfile
 } from '../controllers/authController';
 
 const router = express.Router();
@@ -22,5 +25,8 @@ router.post('/otp/send', sendOTP);
 router.post('/otp/verify', verifyOTP);
 router.post('/logout', logoutUser);
 router.post('/logout-all', logoutAllDevices);
+
+router.get('/me', protect, getUserProfile);
+router.put('/me', protect, updateUserProfile);
 
 export default router;

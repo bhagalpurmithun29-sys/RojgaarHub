@@ -4,6 +4,10 @@ import User, { UserRole } from '../models/User';
 import generateToken from '../utils/generateToken';
 import OtpSession from '../models/OtpSession';
 
+interface AuthRequest extends Request {
+  user?: any;
+}
+
 // Regex enforcing strict passwords: Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Number, 1 Special Char
 const STRICT_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -350,3 +354,56 @@ export const logoutAllDevices = async (req: Request, res: Response) => {
   res.cookie('token', '', { httpOnly: true, expires: new Date(0) });
   res.json({ success: true, message: 'Successfully logged out of all connected device terminals.' });
 };
+
+// @desc    Get current user profile
+// @route   GET /api/auth/me
+// @access  Private
+export const getUserProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.user._id).select('-passwordHash');
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/auth/me
+// @access  Private
+export const updateUserProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.email = req.body.email || user.email;
+      user.phone = req.body.phone || user.phone;
+      user.username = req.body.username || user.username;
+      user.gender = req.body.gender || user.gender;
+      user.dateOfBirth = req.body.dateOfBirth || user.dateOfBirth;
+      user.language = req.body.language || user.language;
+      user.profileImage = req.body.profileImage || user.profileImage;
+      
+      const updatedUser = await user.save();
+      res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        username: updatedUser.username,
+        gender: updatedUser.gender,
+        dateOfBirth: updatedUser.dateOfBirth,
+        language: updatedUser.language,
+        profileImage: updatedUser.profileImage,
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
