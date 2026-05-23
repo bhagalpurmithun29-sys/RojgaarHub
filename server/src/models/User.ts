@@ -24,6 +24,7 @@ export interface IUser extends Document {
   username?: string;
   gender?: string;
   dateOfBirth?: Date;
+  address?: string;
   kycStatus?: string;
   trustScore?: number;
   reliabilityScore?: number;
@@ -111,6 +112,9 @@ const userSchema = new Schema<IUser>(
     },
     dateOfBirth: {
       type: Date,
+    },
+    address: {
+      type: String,
     },
     kycStatus: {
       type: String,

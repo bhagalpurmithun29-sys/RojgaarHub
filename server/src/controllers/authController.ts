@@ -25,9 +25,12 @@ const detectImpossibleTravelAnomaly = (lastLoginGeo: string, currentLoginGeo: st
 // @access  Public
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password, role } = req.body;
+    let { name, username, email, phone, password, role } = req.body;
+    
+    if (email) email = email.toLowerCase();
+    if (username) username = username.toLowerCase();
 
-    const userExists = await User.findOne({ $or: [{ email }, { phone }] });
+    const userExists = await User.findOne({ $or: [{ email }, { phone }, { username }] });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists with this email or phone' });
     }
@@ -41,6 +44,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
     const user = await User.create({
       name,
+      username,
       email,
       phone,
       passwordHash: password, // Will be hashed in Mongoose pre-save hook
@@ -72,7 +76,13 @@ export const authUser = async (req: Request, res: Response) => {
   try {
     const { email, phone, password, browser, deviceName, location, ipAddress } = req.body;
 
-    const query = email ? { email } : { phone };
+    let query: any = {};
+    if (email) {
+      query = { $or: [{ email: email }, { username: email }] };
+    } else if (phone) {
+      query = { phone: phone };
+    }
+
     const user = await User.findOne(query);
 
     if (user && (await user.matchPassword(password))) {
@@ -105,7 +115,7 @@ export const authUser = async (req: Request, res: Response) => {
         }
       });
     } else {
-      res.status(401).json({ message: 'Invalid email/phone or password' });
+      res.status(401).json({ message: 'Invalid email, username or password' });
     }
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -379,13 +389,13 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(req.user._id);
     if (user) {
       user.name = req.body.name || user.name;
-      user.email = req.body.email || user.email;
+      // Email and username are strictly immutable once created.
       user.phone = req.body.phone || user.phone;
-      user.username = req.body.username || user.username;
       user.gender = req.body.gender || user.gender;
       user.dateOfBirth = req.body.dateOfBirth || user.dateOfBirth;
       user.language = req.body.language || user.language;
       user.profileImage = req.body.profileImage || user.profileImage;
+      user.address = req.body.address || user.address;
       
       const updatedUser = await user.save();
       res.json({
@@ -398,6 +408,7 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
         dateOfBirth: updatedUser.dateOfBirth,
         language: updatedUser.language,
         profileImage: updatedUser.profileImage,
+        address: updatedUser.address,
       });
     } else {
       res.status(404).json({ message: 'User not found' });
@@ -407,3 +418,29 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// @desc    Check username availability
+// @route   GET /api/auth/check-username?username=...
+// @access  Public
+export const checkUsername = async (req: Request, res: Response) => {
+  try {
+    const { username } = req.query;
+    if (!username || typeof username !== 'string') {
+      return res.status(400).json({ message: 'Username query parameter is required' });
+    }
+
+    // Force lowercase alphanumeric check on the server just in case
+    const isValidFormat = /^[a-z0-9]+$/.test(username);
+    if (!isValidFormat) {
+      return res.status(400).json({ message: 'Username must be lowercase and alphanumeric only' });
+    }
+
+    const userExists = await User.findOne({ username });
+    if (userExists) {
+      return res.json({ available: false });
+    }
+    
+    return res.json({ available: true });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

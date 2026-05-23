@@ -11,11 +11,13 @@ import {
   logoutUser, 
   logoutAllDevices,
   getUserProfile,
-  updateUserProfile
+  updateUserProfile,
+  checkUsername
 } from '../controllers/authController';
 
 const router = express.Router();
 
+router.get('/check-username', checkUsername);
 router.post('/register', registerUser);
 router.post('/login', authUser);
 router.post('/forgot-password', forgotPassword);
