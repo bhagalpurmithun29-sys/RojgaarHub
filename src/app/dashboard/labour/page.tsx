@@ -6,8 +6,15 @@ import {
   User, CheckCircle, Clock, Star, MessageSquare, History, Settings, LogOut, FileText, CheckCircle2, TrendingUp, AlertTriangle, ShieldAlert
 } from 'lucide-react';
 
-import ChatCenter from '@/components/customer/ChatCenter'; // We can reuse the chat center
+import LabourChatCenter from '@/components/labour/LabourChatCenter';
 import SecuritySettings from '@/components/customer/SecuritySettings';
+import BookingHistory from '@/components/booking/BookingHistory';
+import EarningsWallet from '@/components/labour/EarningsWallet';
+import PerformanceAnalytics from '@/components/labour/PerformanceAnalytics';
+import ActiveBooking from '@/components/labour/ActiveBooking';
+import BookingRequests from '@/components/labour/BookingRequests';
+import RatingsReviews from '@/components/labour/RatingsReviews';
+import SafetySupport from '@/components/labour/SafetySupport';
 
 export default function LabourDashboard() {
   const [activeTab, setActiveTab] = useState('home');
@@ -136,21 +143,19 @@ export default function LabourDashboard() {
           )}
 
           {activeTab === 'home' && <HomeTab />}
-          {activeTab === 'requests' && <RequestsTab />}
+          {activeTab === 'requests' && <BookingRequests />}
           {activeTab === 'chat' && (
             <div className="h-full w-full flex flex-col">
-              <ChatCenter />
+              <LabourChatCenter />
             </div>
           )}
           {activeTab === 'settings' && <SettingsTab />}
-          
-          {/* Placeholder for others */}
-          {['active', 'wallet', 'analytics', 'reviews', 'history', 'safety'].includes(activeTab) && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 text-center shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Module under construction</h3>
-              <p className="text-gray-500 dark:text-zinc-400">The {activeTab} section is currently being integrated.</p>
-            </div>
-          )}
+          {activeTab === 'history' && <BookingHistory initialRole="labour" />}
+          {activeTab === 'wallet' && <EarningsWallet />}
+          {activeTab === 'analytics' && <PerformanceAnalytics />}
+          {activeTab === 'active' && <ActiveBooking />}
+          {activeTab === 'reviews' && <RatingsReviews />}
+          {activeTab === 'safety' && <SafetySupport />}
         </div>
       </main>
 
@@ -247,40 +252,6 @@ function HomeTab() {
   );
 }
 
-function RequestsTab() {
-  return (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      {[1, 2].map((item) => (
-        <div key={item} className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm flex flex-col md:flex-row gap-6 justify-between items-center relative overflow-hidden">
-          {item === 1 && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
-          <div className="flex gap-4 items-start w-full md:w-auto">
-            <img src={`https://i.pravatar.cc/150?u=${item}`} className="w-16 h-16 rounded-2xl object-cover shadow-sm border border-gray-100 dark:border-zinc-700" alt="Customer" />
-            <div>
-               <div className="flex items-center gap-2">
-                 <h3 className="font-black text-lg text-gray-900 dark:text-white">Anjali Sharma</h3>
-                 {item === 1 && <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-md animate-pulse">Expiring soon</span>}
-               </div>
-               <p className="text-sm font-bold text-gray-600 dark:text-zinc-400 mt-1">Electrical Repair • Today, 2:00 PM</p>
-               <div className="flex items-center gap-3 mt-2 text-xs font-semibold text-gray-500">
-                 <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-amber" /> 2.4 km away</span>
-                 <span className="flex items-center gap-1"><Wallet className="w-3.5 h-3.5 text-green-500" /> Est. ₹450 - ₹600</span>
-               </div>
-            </div>
-          </div>
-          
-          <div className="flex gap-3 w-full md:w-auto">
-            <button className="flex-1 md:flex-none px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 font-bold rounded-xl text-sm transition-colors">
-              Reject
-            </button>
-            <button className="flex-1 md:flex-none px-8 py-3 bg-brand-amber hover:bg-brand-orange text-white font-bold rounded-xl text-sm transition-colors shadow-lg shadow-brand-amber/20">
-              Accept Job
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function SettingsTab() {
   const [expanded, setExpanded] = useState<string | null>(null);

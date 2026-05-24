@@ -43,20 +43,20 @@ interface Booking {
 const mockBookings: Booking[] = [
   {
     id: 'RZH-24581',
-    customerName: 'Amit Shah',
-    labourName: 'Ravi Kumar',
+    customerName: 'Mithun Kumar',
+    labourName: 'Vinay Kumar',
     category: 'Electrician',
-    image: 'https://i.pravatar.cc/150?u=ravi',
+    image: 'https://i.pravatar.cc/150?u=mithun',
     date: '20 May 2026',
     time: '10:00 AM - 12:00 PM',
-    location: 'Flat 402, Block-A, Green Ridge Society, Delhi',
+    location: 'Shimla',
     type: 'Hourly',
     status: 'Completed',
     payment: {
-      labourFee: 1000,
+      labourFee: 950,
       platformFee: 50,
       taxes: 0,
-      totalPaid: 1050,
+      totalPaid: 1000,
       method: 'Online',
       status: 'Paid',
     },
@@ -66,7 +66,7 @@ const mockBookings: Booking[] = [
       onTheWay: '10:15 AM',
       arrived: '10:30 AM',
       workStarted: '10:35 AM',
-      workCompleted: '11:30 AM',
+      workCompleted: '11:45 AM',
     },
     rating: 4.8,
   },
@@ -133,8 +133,8 @@ const statusConfig: Record<Status, { color: string, icon: any, bg: string }> = {
   'Rescheduled': { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/30', icon: RefreshCw },
 };
 
-export default function BookingHistory() {
-  const [role, setRole] = useState<Role>('customer');
+export default function BookingHistory({ initialRole = 'customer' }: { initialRole?: Role }) {
+  const [role, setRole] = useState<Role>(initialRole);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -185,23 +185,31 @@ export default function BookingHistory() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Role Toggle for demo purposes */}
-      <div className="flex justify-center mb-8">
-        <div className="bg-gray-100 dark:bg-zinc-900 p-1 rounded-xl inline-flex shadow-inner">
-          <button 
-            onClick={() => setRole('customer')}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${role === 'customer' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
-          >
-            Customer View
-          </button>
-          <button 
-            onClick={() => setRole('labour')}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${role === 'labour' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-zinc-300'}`}
-          >
-            Labour View
-          </button>
+      {/* Labour Summary Cards */}
+      {role === 'labour' && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Completed Jobs</p>
+            <p className="text-2xl font-black text-gray-900 dark:text-white">156</p>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Earnings</p>
+            <p className="text-2xl font-black text-green-600">₹85,000</p>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Rating</p>
+            <p className="text-2xl font-black text-amber-500">4.8</p>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Completion</p>
+            <p className="text-2xl font-black text-blue-600">96%</p>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Cancellation</p>
+            <p className="text-2xl font-black text-red-500">4%</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Filters and Search Bar */}
       <div className="bg-white dark:bg-zinc-950 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800/80 flex flex-col md:flex-row gap-4">
