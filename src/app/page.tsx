@@ -198,11 +198,7 @@ export default function Home() {
             {t.hirePro}
           </Link>
           <Link 
-            href="/profile/setup" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleProtectedRoute('/profile/setup');
-            }}
+            href="/register?role=labour" 
             className="flex-1 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-center font-bold px-8 py-4 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800/80 shadow-sm transition-all"
           >
             {t.registerPartner}
@@ -244,14 +240,10 @@ export default function Home() {
             <h4 className="text-lg font-bold text-gray-900 dark:text-white">{t.workerPortal}</h4>
             <p className="text-xs text-gray-500 dark:text-zinc-400">{t.workerPortalDesc}</p>
             <Link 
-              href="/profile/setup" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleProtectedRoute('/profile/setup');
-              }}
+              href="/register?role=labour" 
               className="inline-block text-xs font-semibold text-brand-orange dark:text-brand-amber hover:underline"
             >
-              {language === 'en' ? 'Manage Partner Profile →' : 'कामगार प्रोफ़ाइल प्रबंधित करें →'}
+              {language === 'en' ? 'Register as Labour →' : 'कामगार के रूप में रजिस्टर करें →'}
             </Link>
           </div>
 

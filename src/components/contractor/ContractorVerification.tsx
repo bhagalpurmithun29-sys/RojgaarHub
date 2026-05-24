@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { UploadCloud, CheckCircle, FileText, AlertTriangle, UserCheck } from 'lucide-react';
+import { UploadCloud, CheckCircle, FileText, AlertTriangle, UserCheck, Briefcase } from 'lucide-react';
 import api from '@/utils/api';
 import toast from 'react-hot-toast';
 
-export default function DocumentVerification() {
+export default function ContractorVerification() {
   const [aadhaarFile, setAadhaarFile] = useState<File | null>(null);
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
-  const [workCertFile, setWorkCertFile] = useState<File | null>(null);
-  const [addressProofFile, setAddressProofFile] = useState<File | null>(null);
+  const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
+  const [businessRegFile, setBusinessRegFile] = useState<File | null>(null);
   const [bankFile, setBankFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
@@ -15,9 +15,9 @@ export default function DocumentVerification() {
     phone: '',
     email: '',
     aadhaarNumber: '',
-    skills: '',
-    experienceYears: '',
-    address: '',
+    companyName: '',
+    panNumber: '',
+    gstNumber: '',
     accountHolderName: '',
     bankName: '',
     accountNumber: '',
@@ -31,13 +31,13 @@ export default function DocumentVerification() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'aadhaar' | 'selfie' | 'workCert' | 'addressProof' | 'bank') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'aadhaar' | 'selfie' | 'tradeLicense' | 'businessReg' | 'bank') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (type === 'aadhaar') setAadhaarFile(file);
       else if (type === 'selfie') setSelfieFile(file);
-      else if (type === 'workCert') setWorkCertFile(file);
-      else if (type === 'addressProof') setAddressProofFile(file);
+      else if (type === 'tradeLicense') setTradeLicenseFile(file);
+      else if (type === 'businessReg') setBusinessRegFile(file);
       else if (type === 'bank') setBankFile(file);
     }
   };
@@ -52,7 +52,7 @@ export default function DocumentVerification() {
   };
 
   const handleSubmit = async () => {
-    if (!aadhaarFile || !selfieFile || !addressProofFile || !bankFile || !formData.aadhaarNumber || !formData.accountNumber) {
+    if (!aadhaarFile || !selfieFile || !tradeLicenseFile || !businessRegFile || !bankFile || !formData.aadhaarNumber || !formData.panNumber || !formData.accountNumber) {
       toast.error('Please fill all mandatory fields and upload required documents.');
       return;
     }
@@ -62,13 +62,12 @@ export default function DocumentVerification() {
       toast.loading('Uploading documents to secure vault...', { id: 'kyc-upload' });
       const aadhaarUrl = await uploadFile(aadhaarFile);
       const selfieUrl = await uploadFile(selfieFile);
-      const addressProofUrl = await uploadFile(addressProofFile);
+      const tradeLicenseUrl = await uploadFile(tradeLicenseFile);
+      const businessRegUrl = await uploadFile(businessRegFile);
       const bankUrl = await uploadFile(bankFile);
-      let workCertUrl = '';
-      if (workCertFile) workCertUrl = await uploadFile(workCertFile);
 
       toast.loading('Submitting for verification...', { id: 'kyc-upload' });
-      const payload = { ...formData, aadhaarUrl, selfieUrl, addressProofUrl, bankUrl, workCertUrl };
+      const payload = { ...formData, aadhaarUrl, selfieUrl, tradeLicenseUrl, businessRegUrl, bankUrl };
       const res = await api.post('/profiles/kyc', payload);
       
       setKycStatus('pending');
@@ -82,14 +81,14 @@ export default function DocumentVerification() {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 border border-gray-100 dark:border-zinc-800 shadow-sm animate-in fade-in duration-500 max-w-3xl mx-auto">
+    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 border border-gray-100 dark:border-zinc-800 shadow-sm animate-in fade-in duration-500 max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6 border-b border-gray-100 dark:border-zinc-800 pb-6">
         <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
-          <UserCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          <Briefcase className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
-          <h2 className="text-xl font-black text-gray-900 dark:text-white">Labour KYC Verification</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Complete your identity, work, address, and bank verification.</p>
+          <h2 className="text-xl font-black text-gray-900 dark:text-white">Contractor KYC Verification</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Complete your personal, business, and bank verification.</p>
         </div>
       </div>
 
@@ -110,13 +109,13 @@ export default function DocumentVerification() {
             <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h3 className="font-bold text-lg text-emerald-900 dark:text-emerald-400">KYC Verified</h3>
-          <p className="text-sm text-emerald-700 dark:text-emerald-500">Your identity has been fully verified. You have earned the Verification Badge!</p>
+          <p className="text-sm text-emerald-700 dark:text-emerald-500">Your identity and business details have been fully verified. You have earned the Verification Badge!</p>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Identity Verification Section */}
           <div className="bg-gray-50 dark:bg-zinc-800/30 p-6 rounded-2xl border border-gray-200 dark:border-zinc-700 space-y-4">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-4">1. Identity Verification</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4">1. Personal Verification</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Full Name</label><input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" placeholder="As per Aadhaar" /></div>
               <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Phone Number</label><input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
@@ -140,55 +139,51 @@ export default function DocumentVerification() {
             </div>
           </div>
 
-          {/* Work Verification Section */}
+          {/* Business Verification Section */}
           <div className="bg-gray-50 dark:bg-zinc-800/30 p-6 rounded-2xl border border-gray-200 dark:border-zinc-700 space-y-4">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-4">2. Work Verification</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4">2. Business Verification</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Primary Skills</label><input type="text" name="skills" value={formData.skills} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" placeholder="e.g. Plumber, Electrician" /></div>
-              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Experience (Years)</label><input type="number" name="experienceYears" value={formData.experienceYears} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
+              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Company / Business Name <span className="text-red-500">*</span></label><input type="text" name="companyName" value={formData.companyName} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
+              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">PAN Number <span className="text-red-500">*</span></label><input type="text" name="panNumber" value={formData.panNumber} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
+              <div className="md:col-span-2"><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">GST Number (Optional)</label><input type="text" name="gstNumber" value={formData.gstNumber} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
             </div>
             
-            <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center w-full">
-              <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'workCert')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-              <FileText className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
-              <p className="font-bold text-sm text-gray-800 dark:text-white">Work Certificate / Previous Work Photos (Optional)</p>
-              {workCertFile && <p className="text-xs text-green-500 mt-1 truncate">{workCertFile.name}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center">
+                <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'tradeLicense')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                <FileText className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
+                <p className="font-bold text-sm text-gray-800 dark:text-white">Trade License <span className="text-red-500">*</span></p>
+                {tradeLicenseFile && <p className="text-xs text-green-500 mt-1 truncate">{tradeLicenseFile.name}</p>}
+              </div>
+              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center">
+                <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'businessReg')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                <Briefcase className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
+                <p className="font-bold text-sm text-gray-800 dark:text-white">Business Registration <span className="text-red-500">*</span></p>
+                {businessRegFile && <p className="text-xs text-green-500 mt-1 truncate">{businessRegFile.name}</p>}
+              </div>
             </div>
           </div>
 
-          {/* Address & Bank Verification */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div className="bg-gray-50 dark:bg-zinc-800/30 p-6 rounded-2xl border border-gray-200 dark:border-zinc-700 space-y-4">
-              <h3 className="font-bold text-gray-900 dark:text-white">3. Address Verification</h3>
-              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Full Address</label><textarea name="address" value={formData.address} onChange={handleInputChange} rows={3} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500"></textarea></div>
-              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center">
-                <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'addressProof')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                <p className="font-bold text-sm text-gray-800 dark:text-white">Address Proof <span className="text-red-500">*</span></p>
-                {addressProofFile && <p className="text-xs text-green-500 mt-1 truncate">{addressProofFile.name}</p>}
-              </div>
-            </div>
-
-            <div className="bg-gray-50 dark:bg-zinc-800/30 p-6 rounded-2xl border border-gray-200 dark:border-zinc-700 space-y-4">
-              <h3 className="font-bold text-gray-900 dark:text-white">4. Bank Details</h3>
+          {/* Bank Verification Section */}
+          <div className="bg-gray-50 dark:bg-zinc-800/30 p-6 rounded-2xl border border-gray-200 dark:border-zinc-700 space-y-4">
+            <h3 className="font-bold text-gray-900 dark:text-white">3. Bank Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Account Holder Name</label><input type="text" name="accountHolderName" value={formData.accountHolderName} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Account No. <span className="text-red-500">*</span></label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
-                <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">IFSC Code <span className="text-red-500">*</span></label><input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
-              </div>
-              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center">
-                <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'bank')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                <p className="font-bold text-sm text-gray-800 dark:text-white">Passbook / Cancelled Cheque <span className="text-red-500">*</span></p>
-                {bankFile && <p className="text-xs text-green-500 mt-1 truncate">{bankFile.name}</p>}
-              </div>
+              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Bank Name</label><input type="text" name="bankName" value={formData.bankName} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
+              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">Account No. <span className="text-red-500">*</span></label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
+              <div><label className="text-xs font-bold text-gray-600 dark:text-zinc-400">IFSC Code <span className="text-red-500">*</span></label><input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} className="w-full mt-1 p-2.5 rounded-xl border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm outline-none focus:border-indigo-500" /></div>
             </div>
-
+            <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center mt-4">
+              <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'bank')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+              <p className="font-bold text-sm text-gray-800 dark:text-white">Cancelled Cheque Upload <span className="text-red-500">*</span></p>
+              {bankFile && <p className="text-xs text-green-500 mt-1 truncate">{bankFile.name}</p>}
+            </div>
           </div>
 
           <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-xl flex items-start gap-3">
             <UploadCloud className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
             <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
-              Documents are securely uploaded to our encrypted vault. By submitting, you agree to our verification terms. Watermarks are automatically applied.
+              Documents are securely uploaded to our encrypted vault. By submitting, you agree to our verification terms.
             </p>
           </div>
 

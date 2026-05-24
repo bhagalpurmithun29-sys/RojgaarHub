@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Filter, Phone, Video, MoreVertical, Paperclip, 
@@ -6,6 +6,7 @@ import {
   CheckCheck, MapPin, ShieldAlert, Heart, Slash, Flag, 
   X, Volume2, MicOff, Info, ArrowLeft, Navigation, Camera
 } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
 
 import api from '@/utils/api';
 import toast from 'react-hot-toast';
@@ -17,6 +18,48 @@ export default function ChatCenter() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isLoadingChats, setIsLoadingChats] = useState(true);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const activeChatRef = useRef(activeChat);
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  // Initialize Socket.io connection
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002', {
+      auth: { token }
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
+    });
+
+    newSocket.on('receive_message', (msg: any) => {
+      // If message belongs to active chat, add it
+      if (activeChatRef.current && msg.sender === activeChatRef.current.id) {
+        const mappedMsg = {
+          id: msg._id || Date.now().toString(),
+          text: msg.content,
+          sender: 'labour',
+          time: new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'delivered'
+        };
+        setMessages(prev => [...prev, mappedMsg]);
+      }
+      
+      // Update chat list snippet here if needed (omitted for brevity)
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
   
   // Fetch Conversations
   useEffect(() => {
@@ -34,9 +77,6 @@ export default function ChatCenter() {
       }
     };
     fetchConversations();
-    // Poll for new conversations every 10s
-    const interval = setInterval(fetchConversations, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   // Fetch Messages for active chat
@@ -59,9 +99,6 @@ export default function ChatCenter() {
       }
     };
     fetchMessages();
-    // Poll for new messages every 3s
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
   }, [activeChat]);
   
   // UI States
@@ -112,6 +149,15 @@ export default function ChatCenter() {
       
       if (res.data.isSpam) {
         toast.error(res.data.message);
+      } else {
+        // Emit via socket for real-time delivery
+        if (socket) {
+          socket.emit('send_message', {
+            receiverId: activeChat.id,
+            bookingId: activeChat.bookingId,
+            content: newMsg.text
+          });
+        }
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send message');

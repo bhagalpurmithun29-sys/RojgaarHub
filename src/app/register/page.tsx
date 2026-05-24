@@ -2,18 +2,23 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Check } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import api from '@/utils/api';
 import toast, { Toaster } from 'react-hot-toast';
+import { Suspense } from 'react';
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
+  const defaultRole = searchParams.get('role') || 'customer';
+
   const [formData, setFormData] = useState({
     name: '',
     username: '',
     email: '',
     phone: '',
     password: '',
-    role: 'customer'
+    role: defaultRole
   });
   const [isLoading, setIsLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -107,13 +112,11 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-brand-navy brand-bg-image p-4">
-      <Toaster position="top-center" />
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-xl relative pt-12">
-        <Link href="/" className="absolute top-4 left-4 text-xs font-semibold text-gray-500 hover:text-brand-amber dark:text-zinc-400 dark:hover:text-brand-amber flex items-center gap-1 transition-all">
-          ← Back to Home
-        </Link>
-        <div className="text-center">
+    <div className="w-full max-w-md space-y-8 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-xl relative pt-12">
+      <Link href="/" className="absolute top-4 left-4 text-xs font-semibold text-gray-500 hover:text-brand-amber dark:text-zinc-400 dark:hover:text-brand-amber flex items-center gap-1 transition-all">
+        ← Back to Home
+      </Link>
+      <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
             Create an account
           </h2>
@@ -224,6 +227,30 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              
+              {/* Password Strength Indicators */}
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-2 text-xs">
+                <p className={`flex items-center gap-1.5 transition-colors ${formData.password.length >= 8 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+                  {formData.password.length >= 8 ? <Check className="w-3.5 h-3.5" /> : <span className="w-3.5 h-3.5 inline-block border border-current rounded-full opacity-30" />}
+                  Minimum 8 characters
+                </p>
+                <p className={`flex items-center gap-1.5 transition-colors ${/[A-Z]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+                  {/[A-Z]/.test(formData.password) ? <Check className="w-3.5 h-3.5" /> : <span className="w-3.5 h-3.5 inline-block border border-current rounded-full opacity-30" />}
+                  At least one uppercase letter (A-Z)
+                </p>
+                <p className={`flex items-center gap-1.5 transition-colors ${/[a-z]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+                  {/[a-z]/.test(formData.password) ? <Check className="w-3.5 h-3.5" /> : <span className="w-3.5 h-3.5 inline-block border border-current rounded-full opacity-30" />}
+                  At least one lowercase letter (a-z)
+                </p>
+                <p className={`flex items-center gap-1.5 transition-colors ${/[0-9]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+                  {/[0-9]/.test(formData.password) ? <Check className="w-3.5 h-3.5" /> : <span className="w-3.5 h-3.5 inline-block border border-current rounded-full opacity-30" />}
+                  At least one Number (0-9)
+                </p>
+                <p className={`flex items-center gap-1.5 transition-colors ${/[^A-Za-z0-9]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+                  {/[^A-Za-z0-9]/.test(formData.password) ? <Check className="w-3.5 h-3.5" /> : <span className="w-3.5 h-3.5 inline-block border border-current rounded-full opacity-30" />}
+                  At least one special character (!@#$%^&*)
+                </p>
+              </div>
             </div>
 
             <div>
@@ -260,6 +287,16 @@ export default function RegisterPage() {
           </Link>
         </div>
       </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-brand-navy brand-bg-image p-4">
+      <Toaster position="top-center" />
+      <Suspense fallback={<div className="text-center p-8">Loading form...</div>}>
+        <RegisterForm />
+      </Suspense>
     </div>
   );
 }

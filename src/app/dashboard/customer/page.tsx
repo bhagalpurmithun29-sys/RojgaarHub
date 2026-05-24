@@ -34,6 +34,7 @@ export default function CustomerDashboard() {
   const [kycStatus, setKycStatus] = useState<string>('approved'); // default to true to prevent flash
   const [showFirstLoginKYC, setShowFirstLoginKYC] = useState(false);
   const [showBookingKYC, setShowBookingKYC] = useState(false);
+  const [openKYCFromWelcome, setOpenKYCFromWelcome] = useState(false);
 
   useEffect(() => {
     // Initial fallback
@@ -208,7 +209,7 @@ export default function CustomerDashboard() {
             {activeTab === 'wallet' && <WalletTab />}
             {activeTab === 'addresses' && <AddressesTab />}
             {activeTab === 'rewards' && <RewardsTab />}
-            {activeTab === 'verification' && <VerificationTab />}
+            {activeTab === 'verification' && <VerificationTab autoOpenKYC={openKYCFromWelcome} setAutoOpenKYC={setOpenKYCFromWelcome} />}
             {activeTab === 'support' && <SupportTab />}
             {activeTab === 'settings' && <SettingsTab defaultExpanded={settingsExpandedSection} />}
           </div>
@@ -218,7 +219,7 @@ export default function CustomerDashboard() {
 
       {/* First Login KYC Prompt Modal */}
       {showFirstLoginKYC && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70">
           <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-zinc-800">
             <div className="w-20 h-20 bg-blue-50 dark:bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500 shadow-inner">
               <ShieldCheck className="w-10 h-10" />
@@ -226,7 +227,7 @@ export default function CustomerDashboard() {
             <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">Welcome to RozgaarHub!</h3>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-8 leading-relaxed">Complete your KYC verification to unlock all RozgaarHub features and improve account trust.</p>
             <div className="space-y-3">
-              <button onClick={() => { setShowFirstLoginKYC(false); setActiveTab('verification'); }} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all text-sm">Verify Now</button>
+              <button onClick={() => { setShowFirstLoginKYC(false); setOpenKYCFromWelcome(true); setActiveTab('verification'); }} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all text-sm">Verify Now</button>
               <button onClick={() => setShowFirstLoginKYC(false)} className="w-full py-3.5 text-gray-500 dark:text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition-all text-sm">Skip for Later</button>
             </div>
           </div>
@@ -235,7 +236,7 @@ export default function CustomerDashboard() {
 
       {/* Booking KYC Restriction Modal */}
       {showBookingKYC && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70">
           <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-zinc-800">
             <div className="w-20 h-20 bg-amber-50 dark:bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-amber-500 shadow-inner">
               <ShieldAlert className="w-10 h-10" />
@@ -243,7 +244,7 @@ export default function CustomerDashboard() {
             <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">Verification Required</h3>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-8 leading-relaxed">Complete your KYC verification to unlock all RozgaarHub features and improve account trust.</p>
             <div className="space-y-3">
-              <button onClick={() => { setShowBookingKYC(false); setActiveTab('verification'); }} className="w-full py-3.5 bg-brand-amber hover:bg-brand-orange text-white font-bold rounded-xl shadow-md transition-all text-sm">Complete KYC</button>
+              <button onClick={() => { setShowBookingKYC(false); setOpenKYCFromWelcome(true); setActiveTab('verification'); }} className="w-full py-3.5 bg-brand-amber hover:bg-brand-orange text-white font-bold rounded-xl shadow-md transition-all text-sm">Complete KYC</button>
               <button onClick={() => setShowBookingKYC(false)} className="w-full py-3.5 text-gray-500 dark:text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition-all text-sm">Cancel</button>
             </div>
           </div>
@@ -846,34 +847,160 @@ function SupportTab() {
   );
 }
 
-function VerificationTab() {
+function VerificationTab({ autoOpenKYC, setAutoOpenKYC }: { autoOpenKYC?: boolean, setAutoOpenKYC?: (v: boolean) => void }) {
   const [profile, setProfile] = useState<any>(null);
   const [showKYCModal, setShowKYCModal] = useState(false);
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarFile, setAadhaarFile] = useState<File | null>(null);
+  const [aadhaarBackFile, setAadhaarBackFile] = useState<File | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // Camera state
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error("Camera access denied", err);
+      alert("Could not access camera. Please allow permissions or upload manually.");
+      setShowCamera(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        canvasRef.current.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "selfie_capture.jpg", { type: "image/jpeg" });
+            setSelfieFile(file);
+            stopCamera();
+          }
+        }, "image/jpeg", 0.9);
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setShowCamera(false);
+  };
 
   useEffect(() => {
+    if (autoOpenKYC && profile && profile.kycStatus === 'unverified') {
+      setShowKYCModal(true);
+      if (setAutoOpenKYC) setAutoOpenKYC(false);
+    }
+  }, [autoOpenKYC, profile, setAutoOpenKYC]);
+
+  useEffect(() => {
+    let isMounted = true;
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5002/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setProfile(data);
+        const res = await api.get('/auth/me');
+        if (res.status === 200 && isMounted) {
+          setProfile(res.data);
+        } else if (isMounted) {
+          setProfile({ error: true }); // Prevent infinite loading if fetch fails
         }
       } catch (e) {
         console.error('Error fetching profile', e);
+        if (isMounted) setProfile({ error: true });
       }
     };
     fetchProfile();
+    return () => { isMounted = false; };
   }, []);
 
   if (!profile) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (profile.error) return <div className="p-8 text-center text-red-500">Failed to load profile data. Please refresh.</div>;
 
   const isVerified = profile.isVerified;
   const kycStatus = profile.kycStatus || 'unverified';
   const trustScore = profile.trustScore || 0;
   const reliabilityScore = profile.reliabilityScore || 0;
+
+  const handleKYCSubmit = async () => {
+    if (!aadhaarNumber || aadhaarNumber.length !== 12) {
+      alert('Please enter a valid 12-digit Aadhaar Number.');
+      return;
+    }
+    if (!aadhaarFile || !aadhaarBackFile || !selfieFile) {
+      alert('Please upload both Aadhaar (Front & Back) and Selfie for verification.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const uploadHeaders = { Authorization: `Bearer ${token}` };
+
+      // Upload Aadhaar
+      const aadhaarFormData = new FormData();
+      aadhaarFormData.append('file', aadhaarFile);
+      const aadhaarRes = await fetch('http://localhost:5002/api/upload', {
+        method: 'POST',
+        headers: uploadHeaders,
+        body: aadhaarFormData,
+      });
+      const aadhaarData = await aadhaarRes.json();
+      const aadhaarUrl = aadhaarData.url;
+
+      // Upload Selfie
+      const selfieFormData = new FormData();
+      selfieFormData.append('file', selfieFile);
+      const selfieRes = await fetch('http://localhost:5002/api/upload', {
+        method: 'POST',
+        headers: uploadHeaders,
+        body: selfieFormData,
+      });
+      const selfieData = await selfieRes.json();
+      const selfieUrl = selfieData.url;
+
+      // Update Profile to Pending
+      const updateRes = await fetch('http://localhost:5002/api/auth/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          kycStatus: 'pending',
+          aadhaarUrl: aadhaarUrl,
+          selfieUrl: selfieUrl
+        }),
+      });
+
+      if (updateRes.ok) {
+        setProfile(prev => ({ ...prev, kycStatus: 'pending', aadhaarUrl, selfieUrl }));
+        setShowKYCModal(false);
+        alert('KYC Documents submitted successfully. Admin will review them soon.');
+      } else {
+        alert('Failed to update KYC status.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error uploading documents. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 pb-12">
@@ -945,6 +1072,9 @@ function VerificationTab() {
                     <li>Some premium features disabled</li>
                   </ul>
                 </div>
+                <button onClick={() => setShowKYCModal(true)} className="mt-4 px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm shadow-sm transition-colors">
+                  View / Edit Form
+                </button>
               </div>
             </div>
           </div>
@@ -991,7 +1121,7 @@ function VerificationTab() {
 
       {/* KYC Modal */}
       {showKYCModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70">
           <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-900/50">
               <div>
@@ -1007,6 +1137,23 @@ function VerificationTab() {
               <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Mandatory Requirements</h3>
                 <div className="space-y-4">
+                  {/* Basic Info */}
+                  <div className="bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-gray-200 dark:border-zinc-700 space-y-4">
+                    <div className="flex items-start gap-4 mb-2">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500 mt-1 shrink-0"><User className="w-5 h-5"/></div>
+                      <div className="flex-1 space-y-4 w-full">
+                        <div>
+                          <label className="block text-sm font-bold text-gray-900 dark:text-white mb-1">Full Name <span className="text-red-500">*</span></label>
+                          <input type="text" readOnly value={profile?.name || ''} className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-900 dark:text-white mb-1">Email Address <span className="text-red-500">*</span></label>
+                          <input type="email" readOnly value={profile?.email || ''} className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Phone Verification */}
                   <div className="bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-gray-200 dark:border-zinc-700 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -1021,42 +1168,98 @@ function VerificationTab() {
 
                   {/* Aadhaar Upload */}
                   <div className="bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-gray-200 dark:border-zinc-700 relative overflow-hidden group">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-4">
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500 mt-1 shrink-0"><FileText className="w-5 h-5"/></div>
-                        <div>
-                          <p className="font-bold text-gray-900 dark:text-white">Aadhaar Card <span className="text-red-500">*</span></p>
-                          <p className="text-xs text-gray-500 mt-1">Upload front and back images or PDF.</p>
-                          <p className="text-[10px] text-blue-500 font-semibold mt-1 bg-blue-50 dark:bg-blue-500/10 inline-block px-2 py-0.5 rounded">JPG, PNG (Max 1MB) | PDF (Max 3MB)</p>
+                        <div className="flex-1 w-full">
+                          <label className="block text-sm font-bold text-gray-900 dark:text-white mb-1">Aadhaar Number <span className="text-red-500">*</span></label>
+                          <input 
+                            type="text" 
+                            maxLength={12}
+                            placeholder="Enter 12-digit Aadhaar Number" 
+                            value={aadhaarNumber}
+                            onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ''))}
+                            className="w-full bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-xl px-4 py-2.5 text-sm focus:border-brand-amber focus:ring-1 focus:ring-brand-amber outline-none transition-colors" 
+                          />
                         </div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-2">
-                        <label className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl text-sm transition-colors cursor-pointer border border-gray-200 dark:border-zinc-600">
-                          <UploadCloud className="w-4 h-4"/> Upload
-                          <input type="file" className="hidden" accept=".jpg,.png,.pdf"/>
-                        </label>
+                      
+                      <div className="flex flex-col sm:flex-row gap-4 ml-14">
+                        <div className="flex-1 bg-gray-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-gray-200 dark:border-zinc-700/50 border-dashed text-center">
+                          <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Front Side <span className="text-red-500">*</span></p>
+                          <label className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-brand-amber font-bold rounded-lg text-xs transition-colors cursor-pointer border border-brand-amber/20 w-full">
+                            <UploadCloud className="w-4 h-4"/> {aadhaarFile ? 'Uploaded' : 'Upload Front'}
+                            <input type="file" className="hidden" accept=".jpg,.png,.pdf" onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setAadhaarFile(e.target.files[0]);
+                              }
+                            }}/>
+                          </label>
+                          {aadhaarFile && <p className="mt-2 text-[10px] text-green-500 font-bold truncate">{aadhaarFile.name}</p>}
+                        </div>
+                        
+                        <div className="flex-1 bg-gray-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-gray-200 dark:border-zinc-700/50 border-dashed text-center">
+                          <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Back Side <span className="text-red-500">*</span></p>
+                          <label className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-brand-amber font-bold rounded-lg text-xs transition-colors cursor-pointer border border-brand-amber/20 w-full">
+                            <UploadCloud className="w-4 h-4"/> {aadhaarBackFile ? 'Uploaded' : 'Upload Back'}
+                            <input type="file" className="hidden" accept=".jpg,.png,.pdf" onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setAadhaarBackFile(e.target.files[0]);
+                              }
+                            }}/>
+                          </label>
+                          {aadhaarBackFile && <p className="mt-2 text-[10px] text-green-500 font-bold truncate">{aadhaarBackFile.name}</p>}
+                        </div>
                       </div>
+                      
+                      <p className="text-[10px] text-blue-500 font-semibold bg-blue-50 dark:bg-blue-500/10 inline-block px-2 py-1 rounded ml-14 self-start">JPG, PNG (Max 5MB) | PDF (Max 10MB)</p>
                     </div>
                   </div>
 
-                  {/* Selfie Upload */}
+                  {/* Selfie Upload / Camera */}
                   <div className="bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-gray-200 dark:border-zinc-700 relative overflow-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-purple-500 mt-1 shrink-0"><Camera className="w-5 h-5"/></div>
-                        <div>
-                          <p className="font-bold text-gray-900 dark:text-white">Selfie Verification <span className="text-red-500">*</span></p>
-                          <p className="text-xs text-gray-500 mt-1">Take a clear selfie in a well-lit room.</p>
-                          <p className="text-[10px] text-purple-500 font-semibold mt-1 bg-purple-50 dark:bg-purple-500/10 inline-block px-2 py-0.5 rounded">Used for AI Face Match with ID</p>
+                    {!showCamera ? (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-purple-500 mt-1 shrink-0"><Camera className="w-5 h-5"/></div>
+                          <div>
+                            <p className="font-bold text-gray-900 dark:text-white">Selfie Verification <span className="text-red-500">*</span></p>
+                            <p className="text-xs text-gray-500 mt-1">Take a clear selfie in a well-lit room.</p>
+                            <p className="text-[10px] text-purple-500 font-semibold mt-1 bg-purple-50 dark:bg-purple-500/10 inline-block px-2 py-0.5 rounded">Used for AI Face Match with ID</p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-2">
+                          {/* Live Camera Button */}
+                          <button onClick={startCamera} className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm">
+                            <Camera className="w-4 h-4"/> {selfieFile ? 'Retake Photo' : 'Take Photo'}
+                          </button>
                         </div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-2">
-                        <label className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl text-sm transition-colors cursor-pointer border border-gray-200 dark:border-zinc-600">
-                          <Camera className="w-4 h-4"/> Take Photo
-                          <input type="file" accept="image/*" capture="user" className="hidden"/>
-                        </label>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-black aspect-video sm:aspect-square flex items-center justify-center border-4 border-gray-100 dark:border-zinc-700">
+                          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover transform scale-x-[-1]"></video>
+                          <canvas ref={canvasRef} className="hidden"></canvas>
+                          {/* Face Overlay Guide */}
+                          <div className="absolute inset-0 border-[40px] border-black/30 rounded-full scale-[1.2] pointer-events-none"></div>
+                        </div>
+                        <div className="flex gap-4">
+                          <button onClick={stopCamera} className="px-6 py-2.5 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-white font-bold rounded-xl text-sm transition-colors">Cancel</button>
+                          <button onClick={capturePhoto} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-2 shadow-md">
+                            <Camera className="w-4 h-4"/> Capture
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {selfieFile && !showCamera && (
+                      <div className="mt-4 flex items-center gap-4 bg-green-50 dark:bg-green-500/10 p-3 rounded-xl border border-green-200 dark:border-green-500/20">
+                        <img src={URL.createObjectURL(selfieFile)} alt="Selfie Preview" className="w-16 h-16 rounded-xl object-cover border-2 border-white dark:border-zinc-700 shadow-sm" />
+                        <div>
+                          <p className="text-sm text-green-700 dark:text-green-400 font-bold flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Selfie Captured</p>
+                          <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">Ready for AI verification</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1092,7 +1295,9 @@ function VerificationTab() {
             
             <div className="p-6 border-t border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-end gap-3">
               <button onClick={() => setShowKYCModal(false)} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors">Cancel</button>
-              <button className="px-8 py-2.5 bg-brand-amber hover:bg-brand-orange text-white font-bold rounded-xl shadow-md transition-all">Submit Documents</button>
+              <button onClick={handleKYCSubmit} disabled={isUploading} className="px-8 py-2.5 bg-brand-amber hover:bg-brand-orange text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50">
+                {isUploading ? 'Uploading...' : 'Submit Documents'}
+              </button>
             </div>
           </div>
         </div>

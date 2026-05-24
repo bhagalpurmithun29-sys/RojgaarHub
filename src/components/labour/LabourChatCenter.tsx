@@ -6,6 +6,7 @@ import {
   AlertTriangle, X, PhoneIncoming, PhoneOff, PhoneForwarded,
   ShieldAlert, Navigation, Info
 } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
 import api from '@/utils/api';
 import toast from 'react-hot-toast';
 
@@ -18,7 +19,47 @@ export default function LabourChatCenter() {
   const [showContactInfo, setShowContactInfo] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoadingChats, setIsLoadingChats] = useState(true);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeChatRef = useRef(activeChat);
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  // Initialize Socket.io connection
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002', {
+      auth: { token }
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
+    });
+
+    newSocket.on('receive_message', (msg: any) => {
+      // If message belongs to active chat, add it
+      if (activeChatRef.current && msg.sender === activeChatRef.current) {
+        const mappedMsg = {
+          id: msg._id || Date.now().toString(),
+          text: msg.content,
+          senderId: 'them',
+          time: new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'delivered'
+        };
+        setMessages(prev => [...prev, mappedMsg]);
+      }
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
 
   // Fetch Conversations
   useEffect(() => {
@@ -36,8 +77,6 @@ export default function LabourChatCenter() {
       }
     };
     fetchConversations();
-    const interval = setInterval(fetchConversations, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   // Fetch Messages for active chat
@@ -60,8 +99,6 @@ export default function LabourChatCenter() {
       }
     };
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
   }, [activeChat]);
 
   const activeUser = chatsList.find(c => c.id === activeChat);
@@ -99,6 +136,14 @@ export default function LabourChatCenter() {
       
       if (res.data.isSpam) {
         toast.error(res.data.message);
+      } else {
+        if (socket) {
+          socket.emit('send_message', {
+            receiverId: activeUser.id,
+            bookingId: activeUser.bookingId,
+            content: newMessage.text
+          });
+        }
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send message');

@@ -30,9 +30,25 @@ export const registerUser = async (req: Request, res: Response) => {
     if (email) email = email.toLowerCase();
     if (username) username = username.toLowerCase();
 
-    const userExists = await User.findOne({ $or: [{ email }, { phone }, { username }] });
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists with this email or phone' });
+    if (email) {
+      const emailExists = await User.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({ message: 'Already account created with this email' });
+      }
+    }
+
+    if (phone) {
+      const phoneExists = await User.findOne({ phone });
+      if (phoneExists) {
+        return res.status(400).json({ message: 'User already exists with this phone number' });
+      }
+    }
+
+    if (username) {
+      const usernameExists = await User.findOne({ username });
+      if (usernameExists) {
+        return res.status(400).json({ message: 'Username is already taken' });
+      }
     }
 
     // Password strength check

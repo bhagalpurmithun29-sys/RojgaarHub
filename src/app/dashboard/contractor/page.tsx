@@ -12,6 +12,9 @@ import TeamManagement from '@/components/contractor/TeamManagement';
 import ActiveProjects from '@/components/contractor/ActiveProjects';
 import ProjectRequests from '@/components/contractor/ProjectRequests';
 import ContractorAnalytics from '@/components/contractor/ContractorAnalytics';
+import ContractorVerification from '@/components/contractor/ContractorVerification';
+import ProjectHistory from '@/components/contractor/ProjectHistory';
+import LiveTeamTracking from '@/components/contractor/LiveTeamTracking';
 import LabourChatCenter from '@/components/labour/LabourChatCenter';
 import EarningsWallet from '@/components/labour/EarningsWallet';
 import SafetySupport from '@/components/labour/SafetySupport';
@@ -63,6 +66,7 @@ export default function ContractorDashboard() {
     { id: 'wallet', label: 'Earnings & Wallet', icon: Wallet, category: 'FINANCE' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, category: 'FINANCE' },
     { id: 'chat', label: 'Communication', icon: MessageSquare, badge: 5, category: 'SUPPORT' },
+    { id: 'verification', label: 'KYC Verification', icon: Shield, category: 'SUPPORT' },
     { id: 'history', label: 'Project History', icon: History, category: 'SUPPORT' },
     { id: 'safety', label: 'Safety & Support', icon: Shield, category: 'SUPPORT' },
     { id: 'settings', label: 'Settings', icon: Settings, category: 'SUPPORT' }
@@ -192,6 +196,9 @@ export default function ContractorDashboard() {
           {activeTab === 'active_projects' && <ActiveProjects />}
           {activeTab === 'projects_req' && <ProjectRequests />}
           {activeTab === 'analytics' && <ContractorAnalytics />}
+          {activeTab === 'verification' && <ContractorVerification />}
+          {activeTab === 'history' && <ProjectHistory />}
+          {activeTab === 'tracking' && <LiveTeamTracking />}
           
           {/* Re-used components */}
           {activeTab === 'chat' && (
@@ -203,7 +210,7 @@ export default function ContractorDashboard() {
           {activeTab === 'safety' && <SafetySupport />}
 
           {/* Placeholders for others */}
-          {['tracking', 'history', 'settings'].includes(activeTab) && (
+          {['settings'].includes(activeTab) && (
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 p-12 text-center shadow-sm">
               <div className="w-20 h-20 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Briefcase className="w-10 h-10 text-gray-400" />
