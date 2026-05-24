@@ -44,13 +44,13 @@ A unified command center for complete platform operations:
 
 ## 🛠️ Technology Stack & Libraries
 
-### 💻 Client (Frontend)
+### 💻 Frontend
 *   **Framework**: Next.js 16 (TypeScript, App Router)
 *   **Styling**: Vanilla CSS & modern HSL tailwind grid architectures
 *   **Icons**: Lucide Icons & Emojis
 *   **Compilation**: Clean ESM/CommonJS modules (0 compiler warnings)
 
-### 🖥️ Server (Backend)
+### 🖥️ Backend
 *   **Runtime**: Node.js & TypeScript (`ts-node`)
 *   **Framework**: Express.js
 *   **Database**: MongoDB (Mongoose Schema Modeling)
@@ -72,14 +72,14 @@ git clone https://github.com/bhagalpurmithun29-sys/RojgaarHub.git
 cd RojgaarHub
 ```
 
-### Step 2: Configure Server Settings
-1. Navigate to the server folder:
+### Step 2: Configure Backend Settings
+1. Navigate to the backend folder:
    ```bash
-   cd server
+   cd backend
    ```
 2. Create your `.env` configuration file based on `.env.example`:
    ```env
-   PORT=5000
+   PORT=5002
    MONGO_URI=mongodb://localhost:27017/rojgaarhub
    JWT_SECRET=superSecretSignatureHexToken9901
    CLIENT_URL=http://localhost:3000
@@ -89,25 +89,24 @@ cd RojgaarHub
    npm install
    npm run build
    ```
-4. Start the server in developer mode (this auto-seeds the admin account: `admin@rojgaarhub.com` / `Admin@123`):
-   ```bash
-   npm run dev
-   ```
 
-### Step 3: Configure Client Settings
-1. Open a new terminal session and navigate to the client folder:
+### Step 3: Configure Frontend Settings
+1. Open a new terminal session and navigate to the frontend folder:
    ```bash
-   cd client
+   cd frontend
    ```
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Run the frontend Next.js dev server:
-   ```bash
-   npm run dev
-   ```
-4. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)** (or the output port)!
+
+### Step 4: Run the Application
+You can run both the frontend and backend servers concurrently from the root directory:
+```bash
+cd ..
+npm run dev
+```
+Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**!
 
 ---
 
