@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Mic, MapPin, Filter, Star, ShieldCheck, 
   Clock, TrendingUp, Zap, ChevronDown, CheckCircle2, 
-  Heart, SlidersHorizontal, Map, UserPlus
+  Heart, SlidersHorizontal, Map, UserPlus, X
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 interface SearchDiscoveryProps {
   kycStatus?: string;
@@ -87,22 +89,106 @@ export default function SearchDiscovery({ kycStatus, setShowBookingKYC }: Search
   const [minRating, setMinRating] = useState('All');
   const [maxDistance, setMaxDistance] = useState('All');
 
-  const handleBookNow = (e: React.MouseEvent) => {
+  const [workers, setWorkers] = useState<any[]>(MOCK_RESULTS);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Booking Modal State
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState<any>(null);
+  
+  // Booking Form State
+  const [bookingForm, setBookingForm] = useState({
+    bookingType: 'hourly',
+    date: '',
+    timeSlot: '10:00 AM - 12:00 PM',
+    address: '',
+    totalAmount: 500
+  });
+
+  React.useEffect(() => {
+    fetchWorkers();
+  }, [activeCategory]);
+
+  const fetchWorkers = async () => {
+    setIsLoading(true);
+    try {
+      const endpoint = activeCategory === 'All' 
+        ? '/profiles/search' 
+        : `/profiles/search?category=${activeCategory}`;
+        
+      const res = await api.get(endpoint);
+      if (res.status === 200 && res.data.length > 0) {
+        const mapped = res.data.map((p: any) => ({
+          id: p.user?._id || 'unknown',
+          name: p.user?.name || 'Worker',
+          category: p.category || 'General',
+          rating: p.ratings || 4.5,
+          experience: `${p.experienceYears || 0} Years`,
+          verified: p.user?.isVerified || true,
+          distance: '2.3 km', // Mock distance
+          responseTime: '15 min',
+          reliability: '96%',
+          price: `₹${p.hourlyRate || 500}/day`,
+          image: p.user?.profileImage || `https://i.pravatar.cc/150?u=${p.user?._id}`,
+          rawPrice: p.hourlyRate || 500
+        }));
+        setWorkers(mapped);
+      } else {
+        setWorkers(MOCK_RESULTS); // Fallback to mock if empty for demo
+      }
+    } catch (err) {
+      console.error(err);
+      setWorkers(MOCK_RESULTS);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBookNow = (e: React.MouseEvent, worker: any) => {
     if (kycStatus !== 'approved' && setShowBookingKYC) {
       e.preventDefault();
       setShowBookingKYC(true);
     } else {
-      alert('Proceeding to booking flow...');
+      setSelectedWorker(worker);
+      setBookingForm(prev => ({ ...prev, totalAmount: worker.rawPrice || 500 }));
+      setIsBookingModalOpen(true);
     }
   };
 
-  const results = MOCK_RESULTS.filter(res => 
-    (activeCategory === 'All' || res.category === activeCategory) &&
+  const submitBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWorker) return;
+
+    try {
+      const payload = {
+        labourId: selectedWorker.id,
+        ...bookingForm
+      };
+
+      const promise = api.post('/bookings', payload);
+      
+      toast.promise(promise, {
+        loading: 'Creating your booking...',
+        success: 'Booking request sent successfully!',
+        error: 'Failed to create booking. Time slot might be taken.'
+      });
+
+      const res = await promise;
+      if (res.status === 201) {
+        setIsBookingModalOpen(false);
+        // Optionally redirect to Active Booking or History
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const results = workers.filter(res => 
     (res.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
      res.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const aiRecommended = MOCK_RESULTS.find(r => r.isAiRecommended);
+  const aiRecommended = workers.find(r => r.isAiRecommended) || workers[0];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -260,7 +346,7 @@ export default function SearchDiscovery({ kycStatus, setShowBookingKYC }: Search
                     <h4 className="font-bold text-sm dark:text-white">{aiRecommended.name}</h4>
                     <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{aiRecommended.price}</p>
                   </div>
-                  <button onClick={handleBookNow} className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-md">Book</button>
+                  <button onClick={(e) => handleBookNow(e, aiRecommended)} className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-md">Book</button>
                 </div>
               </div>
             </div>
@@ -356,7 +442,7 @@ export default function SearchDiscovery({ kycStatus, setShowBookingKYC }: Search
                     <button className="flex-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm">
                       View Profile
                     </button>
-                    <button onClick={handleBookNow} className="flex-1 bg-brand-amber hover:bg-brand-orange text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-md">
+                    <button onClick={(e) => handleBookNow(e, worker)} className="flex-1 bg-brand-amber hover:bg-brand-orange text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-md">
                       Book Now
                     </button>
                   </div>
@@ -375,6 +461,100 @@ export default function SearchDiscovery({ kycStatus, setShowBookingKYC }: Search
           
         </div>
       </div>
+
+      {/* Booking Modal */}
+      <AnimatePresence>
+        {isBookingModalOpen && selectedWorker && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950">
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Book {selectedWorker.name}</h3>
+                <button onClick={() => setIsBookingModalOpen(false)} className="text-gray-400 hover:bg-gray-200 dark:hover:bg-zinc-800 p-2 rounded-full transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={submitBooking} className="p-6 space-y-6">
+                <div className="flex items-center gap-4 bg-indigo-50 dark:bg-indigo-500/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
+                  <img src={selectedWorker.image} className="w-14 h-14 rounded-full object-cover shadow-sm" alt="Worker" />
+                  <div>
+                    <h4 className="font-bold text-gray-900 dark:text-white">{selectedWorker.category} Service</h4>
+                    <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Rate: {selectedWorker.price}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Booking Type</label>
+                    <select 
+                      required
+                      value={bookingForm.bookingType}
+                      onChange={e => setBookingForm({...bookingForm, bookingType: e.target.value})}
+                      className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-amber/20 outline-none"
+                    >
+                      <option value="hourly">Hourly</option>
+                      <option value="daily">Daily</option>
+                      <option value="emergency">Emergency</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Date</label>
+                    <input 
+                      type="date" 
+                      required
+                      value={bookingForm.date}
+                      onChange={e => setBookingForm({...bookingForm, date: e.target.value})}
+                      className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-amber/20 outline-none text-gray-700 dark:text-zinc-300"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Time Slot</label>
+                  <select 
+                    required
+                    value={bookingForm.timeSlot}
+                    onChange={e => setBookingForm({...bookingForm, timeSlot: e.target.value})}
+                    className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-amber/20 outline-none"
+                  >
+                    <option>09:00 AM - 11:00 AM</option>
+                    <option>11:00 AM - 01:00 PM</option>
+                    <option>02:00 PM - 04:00 PM</option>
+                    <option>04:00 PM - 06:00 PM</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Service Address</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Enter full address"
+                    value={bookingForm.address}
+                    onChange={e => setBookingForm({...bookingForm, address: e.target.value})}
+                    className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-amber/20 outline-none"
+                  />
+                </div>
+
+                <button type="submit" className="w-full bg-brand-amber hover:bg-brand-orange text-white py-3.5 rounded-xl font-bold transition-all shadow-md flex justify-center items-center gap-2">
+                  Confirm Booking <CheckCircle2 className="w-5 h-5" />
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

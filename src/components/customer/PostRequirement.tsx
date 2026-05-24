@@ -4,7 +4,7 @@ import {
   ClipboardList, Users, MapPin, Calendar, Clock, 
   IndianRupee, UploadCloud, AlertCircle, Image as ImageIcon,
   MessageSquare, Phone, CheckCircle2, XCircle, FileText,
-  Search, Filter, ChevronRight, UserCircle2, Briefcase, Zap
+  Search, Filter, ChevronRight, UserCircle2, Briefcase, Zap, Star
 } from 'lucide-react';
 
 interface PostRequirementProps {

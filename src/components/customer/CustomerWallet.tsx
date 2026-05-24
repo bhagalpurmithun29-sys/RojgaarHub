@@ -5,6 +5,8 @@ import {
   Gift, ShieldCheck, History, CreditCard, 
   Landmark, AlertCircle, RefreshCw, Smartphone, Search, Filter
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 type TxnType = 'added' | 'payment' | 'refund' | 'reward';
 
@@ -20,26 +22,78 @@ export default function CustomerWallet() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'add'>('dashboard');
   const [filter, setFilter] = useState<'all' | TxnType>('all');
   
+  // Wallet State
+  const [wallet, setWallet] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   // Add Money State
   const [addAmount, setAddAmount] = useState('1000');
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
 
+  React.useEffect(() => {
+    fetchWallet();
+  }, []);
+
+  const fetchWallet = async () => {
+    try {
+      const res = await api.get('/payments/wallet');
+      if (res.data?.success) {
+        setWallet(res.data.wallet);
+        // Map backend transactions to frontend shape
+        const mappedTxns = res.data.wallet.transactions.map((t: any) => ({
+          id: t._id || t.referenceId || `TXN-${Math.floor(Math.random()*10000)}`,
+          type: t.type === 'credit' ? 'added' : 'payment',
+          amount: `${t.type === 'credit' ? '+' : '-'}₹${t.amount}`,
+          date: new Date(t.date).toLocaleString(),
+          status: 'Success',
+          desc: t.description || 'Transaction',
+          rawType: t.type
+        })).reverse(); // newest first
+        setTransactions(mappedTxns);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load wallet data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAddMoney = (e: React.FormEvent) => {
     e.preventDefault();
     setShowOtp(true);
   };
 
-  const verifyOtp = () => {
+  const verifyOtp = async () => {
     if (otp.length === 4) {
-      alert(`₹${addAmount} added to wallet successfully!`);
-      setShowOtp(false);
-      setAddAmount('');
-      setOtp('');
-      setActiveTab('dashboard');
+      const promise = api.post('/payments/verify', {
+        amount: addAmount,
+        razorpay_order_id: 'mock_order_123',
+        razorpay_payment_id: 'mock_payment_123',
+        razorpay_signature: 'mock_sig'
+      });
+
+      toast.promise(promise, {
+        loading: 'Processing payment securely...',
+        success: `₹${addAmount} added to wallet successfully!`,
+        error: 'Failed to process payment'
+      });
+
+      try {
+        await promise;
+        setShowOtp(false);
+        setAddAmount('');
+        setOtp('');
+        fetchWallet(); // refresh balance
+        setActiveTab('dashboard');
+      } catch (err) {
+        console.error(err);
+      }
     } else {
-      alert("Invalid OTP");
+      toast.error("Invalid OTP");
     }
   };
 
@@ -55,11 +109,18 @@ export default function CustomerWallet() {
 
   const getTxnColor = (type: string, status: string) => {
     if (status === 'Failed') return 'text-gray-500';
-    if (type === 'payment') return 'text-rose-600 dark:text-rose-400';
+    if (type === 'payment' || type === 'debit') return 'text-rose-600 dark:text-rose-400';
     return 'text-green-600 dark:text-green-400';
   };
 
-  const filteredTxns = MOCK_TRANSACTIONS.filter(t => filter === 'all' || t.type === filter);
+  const filteredTxns = transactions.filter(t => filter === 'all' || t.type === filter);
+
+  const calculateTotal = (type: 'credit' | 'debit') => {
+    if (!wallet || !wallet.transactions) return 0;
+    return wallet.transactions
+      .filter((t: any) => t.type === type)
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -94,7 +155,7 @@ export default function CustomerWallet() {
                 <p className="text-white/80 font-semibold uppercase tracking-wider text-sm flex items-center gap-2 mb-2">
                   <Wallet className="w-5 h-5" /> Current Balance
                 </p>
-                <h1 className="text-5xl font-black tracking-tight">₹2,500<span className="text-2xl text-white/70 font-bold">.00</span></h1>
+                <h1 className="text-5xl font-black tracking-tight">₹{wallet?.balance || 0}<span className="text-2xl text-white/70 font-bold">.00</span></h1>
                 <p className="text-sm mt-3 flex items-center gap-1.5 bg-black/10 w-fit px-3 py-1 rounded-full backdrop-blur-sm">
                   <Gift className="w-4 h-4" /> 350 Reward Points Available
                 </p>
@@ -118,14 +179,14 @@ export default function CustomerWallet() {
               <div className="w-12 h-12 bg-green-100 dark:bg-green-950/30 text-green-600 rounded-full flex items-center justify-center"><ArrowDownRight className="w-6 h-6" /></div>
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Total Added</p>
-                <p className="text-xl font-black text-gray-900 dark:text-white">₹14,500</p>
+                <p className="text-xl font-black text-gray-900 dark:text-white">₹{calculateTotal('credit')}</p>
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-150 dark:border-zinc-800 shadow-sm flex items-center gap-4">
               <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center"><ArrowUpRight className="w-6 h-6" /></div>
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Total Spent</p>
-                <p className="text-xl font-black text-gray-900 dark:text-white">₹18,600</p>
+                <p className="text-xl font-black text-gray-900 dark:text-white">₹{calculateTotal('debit')}</p>
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-150 dark:border-zinc-800 shadow-sm flex items-center gap-4">

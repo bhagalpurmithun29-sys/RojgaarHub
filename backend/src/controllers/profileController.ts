@@ -77,24 +77,27 @@ export const getProfileById = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Upload KYC Documents (Mocked for now)
+// @desc    Upload KYC Documents
 // @route   POST /api/profiles/kyc
 // @access  Private (Labour/Contractor)
 export const uploadKYC = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user._id;
-    // In a real scenario, handle file uploads (multer) and store in S3/Cloudinary
-    // Here we will just update the status to pending
+    const { aadhaarUrl, panUrl } = req.body;
+    
     let profile = await LabourProfile.findOne({ user: userId });
 
     if (!profile) {
       return res.status(404).json({ message: 'Profile not found. Create profile first.' });
     }
 
+    if (aadhaarUrl) profile.aadhaarCard = aadhaarUrl;
+    if (panUrl) profile.panCard = panUrl;
     profile.kycStatus = 'pending';
+    
     await profile.save();
 
-    res.json({ message: 'KYC documents uploaded successfully. Pending verification.', status: profile.kycStatus });
+    res.json({ message: 'KYC documents uploaded successfully. Pending verification.', status: profile.kycStatus, profile });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

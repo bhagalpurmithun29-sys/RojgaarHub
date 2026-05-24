@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '@/utils/api';
 import { 
   Search, Filter, Calendar, MapPin, Clock, Tag, CreditCard, 
   ChevronDown, ChevronUp, Download, Star, MessageSquare, 
@@ -137,12 +138,55 @@ export default function BookingHistory({ initialRole = 'customer' }: { initialRo
   const [role, setRole] = useState<Role>(initialRole);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
 
-  const filteredBookings = mockBookings.filter(booking => {
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await api.get('/bookings');
+        if (res.status === 200 && res.data.length > 0) {
+          // Map DB model to frontend structure
+          const mappedBookings: Booking[] = res.data.map((b: any) => ({
+            id: b._id.substring(0, 8).toUpperCase(), // Using short ID
+            customerName: b.customer?.name || 'Customer',
+            labourName: b.labour?.name || 'Worker',
+            category: b.bookingType || 'General Service',
+            image: b.labour?.profileImage || 'https://i.pravatar.cc/150?u=' + b._id,
+            date: new Date(b.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            time: b.timeSlot || '10:00 AM',
+            location: b.address || 'Location not specified',
+            type: b.bookingType === 'project' ? 'Project' : 'Hourly', // Simplification
+            status: b.status.charAt(0).toUpperCase() + b.status.slice(1).replace('_', ' '), // Formatting enum to UI status
+            payment: {
+              labourFee: b.totalAmount ? b.totalAmount * 0.9 : 0,
+              platformFee: b.totalAmount ? b.totalAmount * 0.1 : 0,
+              taxes: 0,
+              totalPaid: b.totalAmount || 0,
+              method: 'Online',
+              status: b.status === 'completed' ? 'Paid' : 'Pending',
+            },
+            timeline: {
+              requested: new Date(b.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            },
+            rating: b.rating || 0,
+          }));
+          setBookings(mappedBookings);
+        }
+      } catch (err) {
+        console.error('Failed to fetch bookings, using mock data fallback', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBookings();
+  }, []);
+
+  const filteredBookings = bookings.filter(booking => {
     const matchesSearch = 
       booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.labourName.toLowerCase().includes(searchQuery.toLowerCase()) ||

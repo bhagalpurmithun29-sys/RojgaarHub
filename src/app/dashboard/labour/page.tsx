@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import api from '@/utils/api';
 import { 
   Home, Wallet, Calendar, Bell, Shield, MapPin, Search, ChevronRight,
   User, CheckCircle, Clock, Star, MessageSquare, History, Settings, LogOut, FileText, CheckCircle2, TrendingUp, AlertTriangle, ShieldAlert
@@ -15,6 +16,8 @@ import ActiveBooking from '@/components/labour/ActiveBooking';
 import BookingRequests from '@/components/labour/BookingRequests';
 import RatingsReviews from '@/components/labour/RatingsReviews';
 import SafetySupport from '@/components/labour/SafetySupport';
+import DocumentVerification from '@/components/labour/DocumentVerification';
+import { ShieldCheck } from 'lucide-react';
 
 export default function LabourDashboard() {
   const [activeTab, setActiveTab] = useState('home');
@@ -22,12 +25,41 @@ export default function LabourDashboard() {
   const [userName, setUserName] = useState('Ravi Kumar');
   const [userHandle, setUserHandle] = useState('');
 
+  const [stats, setStats] = useState({
+    todayEarnings: 0,
+    jobsCompleted: 0,
+    rating: 0,
+    reliability: 0,
+    profileImage: ''
+  });
+
   useEffect(() => {
-    const email = localStorage.getItem('user_email');
-    if (email) {
-      setUserName(email.split('@')[0]);
-      setUserHandle('@' + email.split('@')[0]);
-    }
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (res.status === 200) {
+          const data = res.data;
+          setUserName(data.name || data.email?.split('@')[0] || 'Labour Worker');
+          setUserHandle('@' + (data.username || data.name?.toLowerCase().replace(/\s/g, '')));
+          
+          setStats({
+            todayEarnings: data.statistics?.todayEarnings || 0,
+            jobsCompleted: data.statistics?.completedBookings || 0,
+            rating: data.rating || 0,
+            reliability: data.reliabilityScore || 0,
+            profileImage: data.profileImage || ''
+          });
+        }
+      } catch (err) {
+        // Fallback to local storage
+        const email = localStorage.getItem('user_email');
+        if (email) {
+          setUserName(email.split('@')[0]);
+          setUserHandle('@' + email.split('@')[0]);
+        }
+      }
+    };
+    fetchProfile();
   }, []);
 
   const handleLogout = () => {
@@ -47,6 +79,7 @@ export default function LabourDashboard() {
     { id: 'reviews', label: 'Ratings & Reviews', icon: Star, section: 'COMMUNICATIONS' },
     
     { id: 'history', label: 'Booking History', icon: History, section: 'ACCOUNT & SETTINGS' },
+    { id: 'kyc', label: 'KYC & Verification', icon: ShieldCheck, section: 'ACCOUNT & SETTINGS' },
     { id: 'safety', label: 'Safety & Support', icon: ShieldAlert, section: 'ACCOUNT & SETTINGS' },
     { id: 'settings', label: 'Settings', icon: Settings, section: 'ACCOUNT & SETTINGS' },
   ];
@@ -71,7 +104,13 @@ export default function LabourDashboard() {
         {/* Profile Snapshot & Online Toggle */}
         <div className="px-6 pb-4 border-b border-gray-100 dark:border-zinc-800">
           <div className="flex items-center gap-3 mb-4">
-            <img src="https://i.pravatar.cc/150?u=ravi_e" alt="Profile" className="w-12 h-12 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm" />
+            {stats.profileImage ? (
+              <img src={stats.profileImage} alt="Profile" className="w-12 h-12 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm object-cover" />
+            ) : (
+              <div className="w-12 h-12 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm bg-brand-amber flex items-center justify-center text-white font-bold text-lg">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <p className="font-bold text-gray-900 dark:text-white text-sm">{userName}</p>
               <p className="text-xs text-brand-amber font-bold">Electrician • ⭐ 4.8</p>
@@ -142,7 +181,7 @@ export default function LabourDashboard() {
             </div>
           )}
 
-          {activeTab === 'home' && <HomeTab />}
+          {activeTab === 'home' && <HomeTab stats={stats} />}
           {activeTab === 'requests' && <BookingRequests />}
           {activeTab === 'chat' && (
             <div className="h-full w-full flex flex-col">
@@ -154,8 +193,9 @@ export default function LabourDashboard() {
           {activeTab === 'wallet' && <EarningsWallet />}
           {activeTab === 'analytics' && <PerformanceAnalytics />}
           {activeTab === 'active' && <ActiveBooking />}
-          {activeTab === 'reviews' && <RatingsReviews />}
-          {activeTab === 'safety' && <SafetySupport />}
+          { activeTab === 'reviews' && <RatingsReviews /> }
+          { activeTab === 'safety' && <SafetySupport /> }
+          { activeTab === 'kyc' && <DocumentVerification /> }
         </div>
       </main>
 
@@ -163,7 +203,9 @@ export default function LabourDashboard() {
   );
 }
 
-function HomeTab() {
+function HomeTab({ stats }: { stats?: any }) {
+  const displayStats = stats || { todayEarnings: 0, jobsCompleted: 0, rating: 0, reliability: 0 };
+  
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Stats */}
@@ -172,25 +214,25 @@ function HomeTab() {
           <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-bl-[100px]"></div>
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Today's Earnings</p>
           <p className="text-3xl font-black text-gray-900 dark:text-white flex items-end gap-1">
-            <span className="text-lg text-green-500">₹</span>850
+            <span className="text-lg text-green-500">₹</span>{displayStats.todayEarnings}
           </p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-150 dark:border-zinc-800 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-brand-amber/10 rounded-bl-[100px]"></div>
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Jobs Completed</p>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">156</p>
+          <p className="text-3xl font-black text-gray-900 dark:text-white">{displayStats.jobsCompleted}</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-150 dark:border-zinc-800 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-400/10 rounded-bl-[100px]"></div>
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Overall Rating</p>
           <p className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-            4.8 <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+            {displayStats.rating ? displayStats.rating.toFixed(1) : 0} <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
           </p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-150 dark:border-zinc-800 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-bl-[100px]"></div>
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Reliability</p>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">96%</p>
+          <p className="text-3xl font-black text-gray-900 dark:text-white">{displayStats.reliability}%</p>
         </div>
       </div>
 

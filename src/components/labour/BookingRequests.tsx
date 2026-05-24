@@ -5,79 +5,68 @@ import {
   CheckCircle2, XCircle, ShieldCheck, Zap, 
   MessageSquare, SlidersHorizontal, ArrowRight, IndianRupee
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 export default function BookingRequests() {
-  const [requests, setRequests] = useState([
-    {
-      id: 'REQ-8821',
-      customer: {
-        name: 'Mithun Kumar',
-        image: 'https://i.pravatar.cc/150?u=mithun',
-        rating: 4.8,
-        reliability: 96,
-        verified: true
-      },
-      job: {
-        category: 'Electrician Work',
-        type: 'Emergency Service',
-        isEmergency: true
-      },
-      location: {
-        address: 'Shimla Main Road',
-        distance: 2.3,
-      },
-      schedule: {
-        date: 'Today',
-        time: '10:00 AM',
-        duration: '3 hours'
-      },
-      payment: {
-        customerPays: 1000,
-        fee: 50,
-        earnings: 950
-      },
-      timeRemaining: 150, // seconds (2:30)
-      aiSuggestions: [
-        'Similar jobs completed: 48',
-        'High chance of customer repeat booking'
-      ]
-    },
-    {
-      id: 'REQ-8822',
-      customer: {
-        name: 'Priya Sharma',
-        image: 'https://i.pravatar.cc/150?u=priya',
-        rating: 4.5,
-        reliability: 88,
-        verified: true
-      },
-      job: {
-        category: 'AC Servicing',
-        type: 'Hourly Booking',
-        isEmergency: false
-      },
-      location: {
-        address: 'Kufri Heights, Block B',
-        distance: 5.1,
-      },
-      schedule: {
-        date: 'Tomorrow',
-        time: '02:00 PM',
-        duration: '2 hours'
-      },
-      payment: {
-        customerPays: 600,
-        fee: 30,
-        earnings: 570
-      },
-      timeRemaining: 420, // 7:00
-      aiSuggestions: [
-        'Expected completion time: 1.5 hours'
-      ]
-    }
-  ]);
-
+  const [requests, setRequests] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filterMode, setFilterMode] = useState('All');
+
+  useEffect(() => {
+    fetchPendingRequests();
+  }, []);
+
+  const fetchPendingRequests = async () => {
+    try {
+      const res = await api.get('/bookings');
+      if (res.status === 200) {
+        // Filter only requested bookings for this labour
+        const pending = res.data.filter((b: any) => b.status === 'requested' || b.status === 'pending');
+        
+        const mapped = pending.map((b: any) => ({
+          id: b._id,
+          displayId: b._id.substring(0, 8).toUpperCase(),
+          customer: {
+            name: b.customer?.name || 'Customer',
+            image: b.customer?.profileImage || 'https://i.pravatar.cc/150?u=' + b._id,
+            rating: b.customer?.rating || 4.8,
+            reliability: 96,
+            verified: true
+          },
+          job: {
+            category: b.bookingType || 'General Service',
+            type: b.bookingType === 'hourly' ? 'Hourly Booking' : 'Project/Daily',
+            isEmergency: false
+          },
+          location: {
+            address: b.address || 'Location hidden until accepted',
+            distance: 2.3, // Mock distance
+          },
+          schedule: {
+            date: new Date(b.date).toLocaleDateString(),
+            time: b.timeSlot,
+            duration: 'As per work'
+          },
+          payment: {
+            customerPays: b.totalAmount || 0,
+            fee: b.totalAmount ? b.totalAmount * 0.1 : 0,
+            earnings: b.totalAmount ? b.totalAmount * 0.9 : 0
+          },
+          timeRemaining: 300, // Fixed 5 min for demo
+          aiSuggestions: [
+            'Verified customer account',
+            'High chance of quick completion'
+          ]
+        }));
+        setRequests(mapped);
+      }
+    } catch (err) {
+      console.error('Error fetching requests', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Format seconds to MM:SS
   const formatTime = (seconds: number) => {
@@ -97,8 +86,23 @@ export default function BookingRequests() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAction = (id: string, action: 'accept' | 'reject') => {
-    setRequests(prev => prev.filter(req => req.id !== id));
+  const handleAction = async (id: string, action: 'accept' | 'reject') => {
+    try {
+      const responseStatus = action === 'accept' ? 'accepted' : 'rejected';
+      const promise = api.put(`/bookings/${id}/respond`, { status: responseStatus });
+      
+      toast.promise(promise, {
+        loading: 'Processing response...',
+        success: `Booking ${action}ed successfully!`,
+        error: 'Failed to respond to booking'
+      });
+
+      await promise;
+      // Remove from list
+      setRequests(prev => prev.filter(req => req.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -138,6 +142,11 @@ export default function BookingRequests() {
 
       {/* Requests List */}
       <div className="space-y-6">
+        {isLoading ? (
+          <div className="text-center py-20 bg-gray-50 dark:bg-zinc-900/50 rounded-3xl animate-pulse">
+            <p className="text-gray-500">Scanning for new jobs...</p>
+          </div>
+        ) : (
         <AnimatePresence>
           {requests.length === 0 ? (
             <motion.div 
@@ -212,7 +221,7 @@ export default function BookingRequests() {
                           <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-2">
                             <Zap className="w-4 h-4" fill="currentColor" /> AI Smart Match
                           </div>
-                          {req.aiSuggestions.map((sug, i) => (
+                          {req.aiSuggestions.map((sug: string, i: number) => (
                             <p key={i} className="text-sm text-indigo-900 dark:text-indigo-300 flex items-start gap-2">
                               <span className="text-indigo-400 mt-1">•</span> {sug}
                             </p>
@@ -285,6 +294,7 @@ export default function BookingRequests() {
             })
           )}
         </AnimatePresence>
+        )}
       </div>
 
     </div>

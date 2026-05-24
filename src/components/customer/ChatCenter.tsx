@@ -7,52 +7,62 @@ import {
   X, Volume2, MicOff, Info, ArrowLeft, Navigation, Camera
 } from 'lucide-react';
 
-const CHATS = [
-  {
-    id: 'c1',
-    name: 'Ravi Kumar',
-    category: 'Electrician',
-    avatar: 'https://i.pravatar.cc/150?u=ravi_e',
-    lastMessage: 'I am on the way',
-    time: '10:45 AM',
-    unread: 2,
-    online: true,
-    bookingId: '#RZH-24581',
-    bookingStatus: 'On The Way',
-    eta: '8 mins',
-    rating: 4.8,
-    experience: '6 Years',
-    reliability: '96%'
-  },
-  {
-    id: 'c2',
-    name: 'Aman Sharma',
-    category: 'Plumber',
-    avatar: 'https://i.pravatar.cc/150?u=aman_p',
-    lastMessage: 'Work completed',
-    time: 'Yesterday',
-    unread: 0,
-    online: false,
-    bookingId: '#RZH-24200',
-    bookingStatus: 'Completed',
-    rating: 4.9,
-    experience: '8 Years',
-    reliability: '98%'
-  }
-];
-
-const MESSAGES = [
-  { id: 'm1', text: 'Hi Ravi, kitni der me pahunchoge?', sender: 'customer', time: '10:40 AM', status: 'read' },
-  { id: 'm2', text: 'Main 10 min me pahunch jaunga.', sender: 'labour', time: '10:42 AM', status: 'read' },
-  { id: 'm3', text: 'Ok, please jaldi aana.', sender: 'customer', time: '10:43 AM', status: 'read' },
-  { id: 'm4', text: 'I am on the way', sender: 'labour', time: '10:45 AM', status: 'delivered' }
-];
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 export default function ChatCenter() {
-  const [activeChat, setActiveChat] = useState(CHATS[0]);
+  const [chats, setChats] = useState<any[]>([]);
+  const [activeChat, setActiveChat] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
-  const [messages, setMessages] = useState(MESSAGES);
-  const [isTyping, setIsTyping] = useState(true);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
+  
+  // Fetch Conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await api.get('/communications/conversations');
+        setChats(res.data);
+        if (res.data.length > 0 && !activeChat) {
+          setActiveChat(res.data[0]);
+        }
+      } catch (err) {
+        console.error("Failed to load chats:", err);
+      } finally {
+        setIsLoadingChats(false);
+      }
+    };
+    fetchConversations();
+    // Poll for new conversations every 10s
+    const interval = setInterval(fetchConversations, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch Messages for active chat
+  useEffect(() => {
+    if (!activeChat) return;
+    const fetchMessages = async () => {
+      try {
+        const res = await api.get(`/communications/chat/${activeChat.id}`);
+        // Map backend to frontend shape
+        const mappedMsgs = res.data.map((m: any) => ({
+          id: m._id,
+          text: m.content,
+          sender: m.sender === activeChat.id ? 'labour' : 'customer',
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: m.read ? 'read' : 'delivered'
+        }));
+        setMessages(mappedMsgs);
+      } catch (err) {
+        console.error("Failed to load messages", err);
+      }
+    };
+    fetchMessages();
+    // Poll for new messages every 3s
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [activeChat]);
   
   // UI States
   const [showRightPanel, setShowRightPanel] = useState(true);
@@ -77,26 +87,62 @@ export default function ChatCenter() {
     return `${m}:${s}`;
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !activeChat) return;
+
+    // Optimistic UI update
     const newMsg = {
       id: Date.now().toString(),
       text: messageText,
       sender: 'customer',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'sent'
+      status: 'sending'
     };
     setMessages([...messages, newMsg]);
     setMessageText('');
     
-    // Simulate tick update
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, status: 'delivered' } : m));
-    }, 1000);
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, status: 'read' } : m));
-    }, 2500);
+    try {
+      const res = await api.post('/communications/messages', {
+        receiverId: activeChat.id,
+        bookingId: activeChat.bookingId,
+        content: newMsg.text,
+        messageType: 'text'
+      });
+      
+      if (res.data.isSpam) {
+        toast.error(res.data.message);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to send message');
+      setMessages(prev => prev.filter(m => m.id !== newMsg.id));
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!activeChat) return;
+    try {
+      await api.post('/communications/block', { targetUserId: activeChat.id });
+      toast.success(`${activeChat.name} has been blocked.`);
+      setChats(prev => prev.filter(c => c.id !== activeChat.id));
+      setActiveChat(null);
+      setShowRightPanel(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to block user');
+    }
+  };
+
+  const handleReportUser = async () => {
+    if (!activeChat) return;
+    try {
+      await api.post('/communications/report', { 
+        targetUserId: activeChat.id,
+        reason: 'Inappropriate behavior in chat'
+      });
+      toast.success(`Report submitted for ${activeChat.name}. Support will review it.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to report user');
+    }
   };
 
   return (
@@ -121,28 +167,36 @@ export default function ChatCenter() {
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto p-2">
-          {CHATS.map(chat => (
-            <div 
-              key={chat.id} 
-              onClick={() => { setActiveChat(chat); setShowMobileList(false); }}
-              className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-colors ${activeChat?.id === chat.id ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-gray-50 dark:hover:bg-zinc-800/50'}`}
-            >
-              <div className="relative">
-                <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-zinc-700" />
-                <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-zinc-900 ${chat.online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{chat.name}</h4>
-                  <span className={`text-[10px] font-bold ${chat.unread > 0 ? 'text-brand-amber' : 'text-gray-400'}`}>{chat.time}</span>
+          {isLoadingChats ? (
+            <div className="p-4 text-center text-sm text-gray-500">Loading conversations...</div>
+          ) : chats.length === 0 ? (
+            <div className="p-4 text-center text-sm text-gray-500">No active conversations found.</div>
+          ) : (
+            chats.map(chat => (
+              <div 
+                key={chat.id} 
+                onClick={() => { setActiveChat(chat); setShowMobileList(false); }}
+                className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-colors ${activeChat?.id === chat.id ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-gray-50 dark:hover:bg-zinc-800/50'}`}
+              >
+                <div className="relative">
+                  <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-zinc-700" />
+                  <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-zinc-900 ${chat.online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <p className={`text-xs truncate ${chat.unread > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500 dark:text-zinc-400'}`}>{chat.lastMessage}</p>
-                  {chat.unread > 0 && <span className="bg-brand-amber text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">{chat.unread}</span>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{chat.name}</h4>
+                    <span className={`text-[10px] font-bold ${chat.unread > 0 ? 'text-brand-amber' : 'text-gray-400'}`}>
+                      {new Date(chat.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className={`text-xs truncate ${chat.unread > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500 dark:text-zinc-400'}`}>{chat.lastMessage}</p>
+                    {chat.unread > 0 && <span className="bg-brand-amber text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">{chat.unread}</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -356,10 +410,10 @@ export default function ChatCenter() {
               </div>
 
               <div className="pt-6 border-t border-gray-200 dark:border-zinc-800 space-y-2">
-                <button className="w-full flex items-center gap-3 p-3 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl font-bold text-sm transition-colors">
+                <button onClick={handleBlockUser} className="w-full flex items-center gap-3 p-3 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl font-bold text-sm transition-colors">
                    <Slash className="w-5 h-5" /> Block User
                 </button>
-                <button className="w-full flex items-center gap-3 p-3 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl font-bold text-sm transition-colors">
+                <button onClick={handleReportUser} className="w-full flex items-center gap-3 p-3 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl font-bold text-sm transition-colors">
                    <Flag className="w-5 h-5" /> Report Contact
                 </button>
               </div>

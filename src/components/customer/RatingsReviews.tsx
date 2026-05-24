@@ -187,7 +187,7 @@ export default function RatingsReviews() {
                       <div>
                         <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                           {review.author} 
-                          {review.verified && <ShieldCheck className="w-4 h-4 text-blue-500" title="Verified Booking" />}
+                          {review.verified && <span title="Verified Booking"><ShieldCheck className="w-4 h-4 text-blue-500" /></span>}
                         </h4>
                         <p className="text-xs text-gray-500">{review.date}</p>
                       </div>

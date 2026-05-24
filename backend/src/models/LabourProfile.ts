@@ -57,6 +57,8 @@ export interface ILabourProfile extends Document {
   beforeAfterImages: IBeforeAfter[];
   previousProjects: IProject[];
   certificates: string[];
+  aadhaarCard?: string;
+  panCard?: string;
   jobsCompleted: number;
   responseTime: string;
   cancellationRate: number;
@@ -186,6 +188,12 @@ const labourProfileSchema = new Schema<ILabourProfile>(
         type: String,
       },
     ],
+    aadhaarCard: {
+      type: String,
+    },
+    panCard: {
+      type: String,
+    },
     jobsCompleted: {
       type: Number,
       default: 0,

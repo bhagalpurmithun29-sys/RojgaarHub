@@ -115,6 +115,77 @@ export const getChatHistory = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// @desc    Get all active conversations (based on bookings)
+// @route   GET /api/communications/conversations
+// @access  Private
+export const getConversations = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user._id;
+    
+    // Find all bookings where user is either customer or labour
+    const bookings = await Booking.find({
+      $or: [
+        { customer: userId },
+        { labour: userId },
+        { labourIds: userId }
+      ]
+    }).populate('customer', 'name profileImage')
+      .populate('labour', 'name profileImage')
+      .sort({ updatedAt: -1 });
+
+    const conversations = [];
+
+    for (const booking of bookings) {
+      const isCustomer = booking.customer._id.toString() === userId.toString();
+      const otherUser: any = isCustomer ? booking.labour : booking.customer;
+      
+      if (!otherUser) continue;
+
+      // Get last message for this booking
+      const lastMessage = await Message.findOne({ booking: booking._id })
+        .sort({ createdAt: -1 });
+
+      // Calculate unread count
+      const unreadCount = await Message.countDocuments({
+        booking: booking._id,
+        receiver: userId,
+        read: false
+      });
+
+      conversations.push({
+        id: otherUser._id, // receiverId for chat
+        bookingId: booking._id,
+        bookingDisplayId: `#RZH-${booking._id.toString().substring(18, 24).toUpperCase()}`,
+        name: otherUser.name || 'User',
+        category: isCustomer ? 'Worker' : 'Customer',
+        avatar: otherUser.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser.name || 'User')}&background=random`,
+        lastMessage: lastMessage ? lastMessage.content : (isCustomer ? 'Chat started' : 'Booking received'),
+        time: lastMessage ? lastMessage.createdAt : booking.updatedAt,
+        unread: unreadCount,
+        online: true, // mock
+        bookingStatus: booking.status,
+        eta: booking.status === BookingStatus.ON_THE_WAY ? 'On The Way' : '',
+        rating: 4.8, // mock
+        reliability: '95%', // mock
+      });
+    }
+
+    // Deduplicate by otherUser id (in case of multiple bookings, keep latest)
+    const uniqueConversations = [];
+    const seenIds = new Set();
+    for (const conv of conversations) {
+      if (!seenIds.has(conv.id.toString())) {
+        seenIds.add(conv.id.toString());
+        uniqueConversations.push(conv);
+      }
+    }
+
+    res.json(uniqueConversations);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Delete a message (Delete for me vs Delete for everyone)
 // @route   DELETE /api/communications/messages/:id
 // @access  Private

@@ -5,19 +5,85 @@ import {
   Clock, CheckCircle2, Building, Landmark, Plus, 
   CreditCard, ShieldCheck, Download, AlertCircle, ChevronRight, Award
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 export default function EarningsWallet() {
   const [activeTab, setActiveTab] = useState<'overview' | 'withdraw' | 'history'>('overview');
-  const [withdrawAmount, setWithdrawAmount] = useState('3000');
+  const [withdrawAmount, setWithdrawAmount] = useState('0');
   const [payoutMethod, setPayoutMethod] = useState('instant');
+  
+  const [wallet, setWallet] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock Transactions
-  const transactions = [
-    { id: 'TXN-RW10541', type: 'Earnings', amount: 950, date: '21 May 2026, 11:45 AM', status: 'Success', icon: ArrowUpRight, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-500/10' },
-    { id: 'TXN-RW10542', type: 'Withdrawal', amount: 3000, date: '20 May 2026, 05:30 PM', status: 'Success', icon: ArrowDownToLine, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
-    { id: 'TXN-RW10543', type: 'Bonus', amount: 500, date: '15 May 2026, 10:00 AM', status: 'Success', icon: Award, color: 'text-brand-amber', bg: 'bg-brand-amber/10 dark:bg-brand-amber/20' },
-    { id: 'TXN-RW10544', type: 'Earnings', amount: 1200, date: '14 May 2026, 02:15 PM', status: 'Success', icon: ArrowUpRight, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-500/10' },
-  ];
+  React.useEffect(() => {
+    fetchWallet();
+  }, []);
+
+  const fetchWallet = async () => {
+    try {
+      const res = await api.get('/payments/wallet');
+      if (res.data?.success) {
+        setWallet(res.data.wallet);
+        // Map backend transactions to frontend shape
+        const mappedTxns = res.data.wallet.transactions.map((t: any) => ({
+          id: t._id || t.referenceId || `TXN-${Math.floor(Math.random()*10000)}`,
+          type: t.type === 'credit' ? 'Earnings' : 'Withdrawal',
+          amount: t.amount,
+          date: new Date(t.date).toLocaleString(),
+          status: 'Success',
+          icon: t.type === 'credit' ? ArrowUpRight : ArrowDownToLine,
+          color: t.type === 'credit' ? 'text-green-500' : 'text-rose-500',
+          bg: t.type === 'credit' ? 'bg-green-50 dark:bg-green-500/10' : 'bg-rose-50 dark:bg-rose-500/10'
+        })).reverse();
+        setTransactions(mappedTxns);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to fetch wallet data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!withdrawAmount || Number(withdrawAmount) <= 0) return;
+    
+    if (Number(withdrawAmount) > wallet?.balance) {
+      toast.error('Insufficient balance');
+      return;
+    }
+
+    try {
+      const promise = api.post('/payments/withdraw', {
+        amount: Number(withdrawAmount),
+        bankAccountDetails: 'Default Saved Bank'
+      });
+
+      toast.promise(promise, {
+        loading: 'Processing withdrawal request...',
+        success: 'Withdrawal requested successfully!',
+        error: 'Failed to process withdrawal'
+      });
+
+      const res = await promise;
+      if (res.status === 200) {
+        setWithdrawAmount('0');
+        fetchWallet(); // refresh balance
+        setActiveTab('history');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const calculateTotal = (type: 'credit' | 'debit') => {
+    if (!wallet || !wallet.transactions) return 0;
+    return wallet.transactions
+      .filter((t: any) => t.type === type)
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -31,16 +97,16 @@ export default function EarningsWallet() {
             <div>
               <p className="text-indigo-200 dark:text-zinc-400 font-medium mb-1">Available to Withdraw</p>
               <h2 className="text-5xl font-black tracking-tight flex items-center gap-2">
-                ₹3,300 <span className="text-xl font-medium text-indigo-300">.00</span>
+                ₹{wallet?.balance || 0} <span className="text-xl font-medium text-indigo-300">.00</span>
               </h2>
               <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                  <span className="text-indigo-100">Pending: ₹1,200</span>
+                  <span className="text-indigo-100">Pending: ₹0</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                  <span className="text-indigo-100">Total Withdrawn: ₹25,000</span>
+                  <span className="text-indigo-100">Total Withdrawn: ₹{calculateTotal('debit')}</span>
                 </div>
               </div>
             </div>
@@ -78,21 +144,21 @@ export default function EarningsWallet() {
       {/* Top Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">Today</p>
-          <p className="text-2xl font-black text-gray-900 dark:text-white">₹850</p>
-          <p className="text-[10px] text-emerald-500 font-bold mt-1 flex items-center"><TrendingUp className="w-3 h-3 mr-1" /> +12% vs yesterday</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">Total Earnings</p>
+          <p className="text-2xl font-black text-gray-900 dark:text-white">₹{calculateTotal('credit')}</p>
+          <p className="text-[10px] text-emerald-500 font-bold mt-1 flex items-center"><TrendingUp className="w-3 h-3 mr-1" /> Lifetime</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">This Week</p>
-          <p className="text-2xl font-black text-gray-900 dark:text-white">₹6,500</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">Withdrawn</p>
+          <p className="text-2xl font-black text-gray-900 dark:text-white">₹{calculateTotal('debit')}</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">This Month</p>
-          <p className="text-2xl font-black text-gray-900 dark:text-white">₹25,000</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">Current Balance</p>
+          <p className="text-2xl font-black text-gray-900 dark:text-white">₹{wallet?.balance || 0}</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 bg-gradient-to-br from-white to-gray-50 dark:from-zinc-900 dark:to-zinc-950">
-          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">Lifetime</p>
-          <p className="text-2xl font-black text-brand-amber">₹1,45,000</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider mb-2">Pending Escrow</p>
+          <p className="text-2xl font-black text-brand-amber">₹0</p>
         </div>
       </div>
 
@@ -209,8 +275,8 @@ export default function EarningsWallet() {
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-2 flex justify-between">
-                  <span>Available: ₹3,300</span>
-                  <button className="text-indigo-600 font-bold hover:underline" onClick={() => setWithdrawAmount('3300')}>Withdraw Max</button>
+                  <span>Available: ₹{wallet?.balance || 0}</span>
+                  <button className="text-indigo-600 font-bold hover:underline" onClick={() => setWithdrawAmount(wallet?.balance?.toString() || '0')}>Withdraw Max</button>
                 </p>
               </div>
 
@@ -257,7 +323,7 @@ export default function EarningsWallet() {
                 </div>
               </div>
 
-              <button className="w-full bg-brand-amber hover:bg-brand-orange text-white py-4 rounded-xl font-bold text-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-brand-amber/20">
+              <button onClick={handleWithdraw} className="w-full bg-brand-amber hover:bg-brand-orange text-white py-4 rounded-xl font-bold text-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-brand-amber/20">
                 <ShieldCheck className="w-5 h-5" />
                 Confirm Withdrawal
               </button>

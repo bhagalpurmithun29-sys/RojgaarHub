@@ -6,73 +6,63 @@ import {
   AlertTriangle, X, PhoneIncoming, PhoneOff, PhoneForwarded,
   ShieldAlert, Navigation, Info
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 export default function LabourChatCenter() {
-  const [activeChat, setActiveChat] = useState<string>('c1');
+  const [chatsList, setChatsList] = useState<any[]>([]);
+  const [activeChat, setActiveChat] = useState<any>(null);
   const [messageInput, setMessageInput] = useState('');
   const [isCalling, setIsCalling] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock Data tailored for Labour
-  const chatsList = [
-    {
-      id: 'c1',
-      name: 'Mithun Kumar',
-      image: 'https://i.pravatar.cc/150?u=mithun',
-      lastMessage: 'Ok, please jaldi aana.',
-      time: '10:45 AM',
-      unread: 2,
-      isOnline: true,
-      bookingStatus: 'On The Way',
-      bookingId: 'RZH-24581',
-      eta: '8 min',
-      location: 'Shimla Main Road'
-    },
-    {
-      id: 'c2',
-      name: 'Rahul Sharma',
-      image: 'https://i.pravatar.cc/150?u=rahul',
-      lastMessage: 'Work completed',
-      time: 'Yesterday',
-      unread: 0,
-      isOnline: false,
-      bookingStatus: 'Completed',
-      bookingId: 'RZH-24500'
-    }
-  ];
+  // Fetch Conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await api.get('/communications/conversations');
+        setChatsList(res.data);
+        if (res.data.length > 0 && !activeChat) {
+          setActiveChat(res.data[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load chats:", err);
+      } finally {
+        setIsLoadingChats(false);
+      }
+    };
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const [messages, setMessages] = useState([
-    {
-      id: 'm1',
-      senderId: 'c1',
-      text: 'I need wiring work',
-      time: '10:40 AM',
-      status: 'read'
-    },
-    {
-      id: 'm2',
-      senderId: 'c1',
-      text: 'Hey, kitni der me pahunchoge?',
-      time: '10:42 AM',
-      status: 'read'
-    },
-    {
-      id: 'm3',
-      senderId: 'me',
-      text: 'Main 10 min me pahunch jaunga.',
-      time: '10:43 AM',
-      status: 'read' // blue ticks
-    },
-    {
-      id: 'm4',
-      senderId: 'c1',
-      text: 'Ok, please jaldi aana.',
-      time: '10:45 AM',
-      status: 'delivered'
-    }
-  ]);
+  // Fetch Messages for active chat
+  useEffect(() => {
+    if (!activeChat) return;
+    const fetchMessages = async () => {
+      try {
+        const res = await api.get(`/communications/chat/${activeChat}`);
+        // Map backend to frontend shape
+        const mappedMsgs = res.data.map((m: any) => ({
+          id: m._id,
+          text: m.content,
+          senderId: m.sender === activeChat ? 'them' : 'me',
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: m.read ? 'read' : 'delivered'
+        }));
+        setMessages(mappedMsgs);
+      } catch (err) {
+        console.error("Failed to load messages", err);
+      }
+    };
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [activeChat]);
 
   const activeUser = chatsList.find(c => c.id === activeChat);
 
@@ -84,28 +74,63 @@ export default function LabourChatCenter() {
     scrollToBottom();
   }, [messages, activeChat]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() || !activeChat || !activeUser) return;
 
     const newMessage = {
       id: Date.now().toString(),
       senderId: 'me',
       text: messageInput,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'sent'
+      status: 'sending'
     };
 
     setMessages([...messages, newMessage]);
     setMessageInput('');
     
-    // Simulate delivered then read
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'delivered' } : m));
-    }, 1000);
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'read' } : m));
-    }, 2500);
+    try {
+      const res = await api.post('/communications/messages', {
+        receiverId: activeUser.id,
+        bookingId: activeUser.bookingId,
+        content: newMessage.text,
+        messageType: 'text'
+      });
+      
+      if (res.data.isSpam) {
+        toast.error(res.data.message);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to send message');
+      setMessages(prev => prev.filter(m => m.id !== newMessage.id));
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!activeUser) return;
+    try {
+      await api.post('/communications/block', { targetUserId: activeUser.id });
+      toast.success(`${activeUser.name} has been blocked.`);
+      // Optimistically remove from chat list
+      setChatsList(prev => prev.filter(c => c.id !== activeUser.id));
+      setActiveChat(null);
+      setShowContactInfo(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to block user');
+    }
+  };
+
+  const handleReportUser = async () => {
+    if (!activeUser) return;
+    try {
+      await api.post('/communications/report', { 
+        targetUserId: activeUser.id,
+        reason: 'Inappropriate behavior in chat'
+      });
+      toast.success(`Report submitted for ${activeUser.name}. Support will review it.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to report user');
+    }
   };
 
   // Simulate Incoming Call
@@ -132,9 +157,9 @@ export default function LabourChatCenter() {
             >
               <div className="w-24 h-24 rounded-full mx-auto mb-6 relative">
                 <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-20"></div>
-                <img src={chatsList[0].image} className="w-full h-full rounded-full border-4 border-gray-800 relative z-10" alt="Caller" />
+                <img src={activeUser?.avatar || "https://i.pravatar.cc/150"} className="w-full h-full rounded-full border-4 border-gray-800 relative z-10" alt="Caller" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-1">Mithun Kumar</h3>
+              <h3 className="text-2xl font-bold text-white mb-1">{activeUser?.name || 'User'}</h3>
               <p className="text-gray-400 mb-10">Incoming Call...</p>
               
               <div className="flex justify-center gap-8">
@@ -167,7 +192,7 @@ export default function LabourChatCenter() {
             
             <div className="w-40 h-40 rounded-full relative">
               <div className="absolute inset-0 bg-white/5 rounded-full animate-pulse"></div>
-              <img src={activeUser?.image} className="w-full h-full rounded-full border-4 border-gray-800 relative z-10 object-cover" alt="Call Avatar" />
+              <img src={activeUser?.avatar || "https://i.pravatar.cc/150"} className="w-full h-full rounded-full border-4 border-gray-800 relative z-10 object-cover" alt="Call Avatar" />
             </div>
 
             <div className="flex gap-6 mb-10">
@@ -208,40 +233,46 @@ export default function LabourChatCenter() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {chatsList.map(chat => (
-            <div 
-              key={chat.id}
-              onClick={() => setActiveChat(chat.id)}
-              className={`p-4 flex items-center gap-4 cursor-pointer transition-colors border-b border-gray-100 dark:border-zinc-800/50 ${
-                activeChat === chat.id ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-gray-50 dark:hover:bg-zinc-800/50'
-              }`}
-            >
-              <div className="relative">
-                <img src={chat.image} className="w-12 h-12 rounded-full object-cover" alt={chat.name} />
-                {chat.isOnline && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="font-bold text-gray-900 dark:text-white truncate">{chat.name}</h4>
-                  <span className={`text-[10px] whitespace-nowrap ${chat.unread > 0 ? 'text-brand-amber font-bold' : 'text-gray-400'}`}>
-                    {chat.time}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500'}`}>
-                    {chat.lastMessage}
-                  </p>
-                  {chat.unread > 0 && (
-                    <span className="w-5 h-5 bg-brand-amber text-white text-[10px] font-bold flex items-center justify-center rounded-full ml-2 shrink-0">
-                      {chat.unread}
-                    </span>
+          {isLoadingChats ? (
+            <div className="p-4 text-center text-sm text-gray-500">Loading conversations...</div>
+          ) : chatsList.length === 0 ? (
+            <div className="p-4 text-center text-sm text-gray-500">No active conversations found.</div>
+          ) : (
+            chatsList.map(chat => (
+              <div 
+                key={chat.id}
+                onClick={() => setActiveChat(chat.id)}
+                className={`p-4 flex items-center gap-4 cursor-pointer transition-colors border-b border-gray-100 dark:border-zinc-800/50 ${
+                  activeChat === chat.id ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-gray-50 dark:hover:bg-zinc-800/50'
+                }`}
+              >
+                <div className="relative">
+                  <img src={chat.avatar} className="w-12 h-12 rounded-full object-cover" alt={chat.name} />
+                  {chat.online && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></div>
                   )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-bold text-gray-900 dark:text-white truncate">{chat.name}</h4>
+                    <span className={`text-[10px] whitespace-nowrap ${chat.unread > 0 ? 'text-brand-amber font-bold' : 'text-gray-400'}`}>
+                      {new Date(chat.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500'}`}>
+                      {chat.lastMessage}
+                    </p>
+                    {chat.unread > 0 && (
+                      <span className="w-5 h-5 bg-brand-amber text-white text-[10px] font-bold flex items-center justify-center rounded-full ml-2 shrink-0">
+                        {chat.unread}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -257,14 +288,14 @@ export default function LabourChatCenter() {
             onClick={() => setShowContactInfo(!showContactInfo)}
           >
             <div className="relative">
-              <img src={activeUser?.image} className="w-10 h-10 rounded-full object-cover" alt={activeUser?.name} />
-              {activeUser?.isOnline && (
+              <img src={activeUser?.avatar || "https://i.pravatar.cc/150"} className="w-10 h-10 rounded-full object-cover" alt={activeUser?.name} />
+              {activeUser?.online && (
                 <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#202C33] rounded-full"></div>
               )}
             </div>
             <div>
               <h3 className="font-bold text-gray-900 dark:text-[#E9EDEF] group-hover:underline">{activeUser?.name}</h3>
-              <p className="text-xs text-gray-500 dark:text-[#8696A0]">{activeUser?.isOnline ? 'Online' : 'Offline'}</p>
+              <p className="text-xs text-gray-500 dark:text-[#8696A0]">{activeUser?.online ? 'Online' : 'Offline'}</p>
             </div>
           </div>
           
@@ -396,7 +427,7 @@ export default function LabourChatCenter() {
             
             <div className="flex-1 overflow-y-auto">
               <div className="bg-white dark:bg-[#202C33] p-6 flex flex-col items-center mb-2 shadow-sm">
-                <img src={activeUser?.image} className="w-48 h-48 rounded-full object-cover mb-4 border-4 border-gray-50 dark:border-zinc-800" alt="Profile" />
+                <img src={activeUser?.avatar || "https://i.pravatar.cc/150"} className="w-48 h-48 rounded-full object-cover mb-4 border-4 border-gray-50 dark:border-zinc-800" alt="Profile" />
                 <h2 className="text-2xl font-black text-gray-900 dark:text-[#E9EDEF]">{activeUser?.name}</h2>
                 <p className="text-gray-500 dark:text-[#8696A0]">Customer • Joined 2024</p>
                 
@@ -430,10 +461,10 @@ export default function LabourChatCenter() {
               </div>
 
               <div className="bg-white dark:bg-[#202C33] p-2 shadow-sm space-y-1">
-                <button className="w-full text-left px-4 py-3 text-red-500 hover:bg-gray-50 dark:hover:bg-[#2A3942] font-semibold flex items-center gap-3 transition-colors">
+                <button onClick={handleBlockUser} className="w-full text-left px-4 py-3 text-red-500 hover:bg-gray-50 dark:hover:bg-[#2A3942] font-semibold flex items-center gap-3 transition-colors">
                   <ShieldAlert className="w-5 h-5" /> Block {activeUser?.name}
                 </button>
-                <button className="w-full text-left px-4 py-3 text-red-500 hover:bg-gray-50 dark:hover:bg-[#2A3942] font-semibold flex items-center gap-3 transition-colors">
+                <button onClick={handleReportUser} className="w-full text-left px-4 py-3 text-red-500 hover:bg-gray-50 dark:hover:bg-[#2A3942] font-semibold flex items-center gap-3 transition-colors">
                   <AlertTriangle className="w-5 h-5" /> Report User
                 </button>
               </div>

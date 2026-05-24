@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import api from '@/utils/api';
+import toast, { Toaster } from 'react-hot-toast';
 // import { Button } from '@/components/ui/button';
 // import { Input } from '@/components/ui/input';
 // import { Label } from '@/components/ui/label';
@@ -48,19 +50,19 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage('');
-    try {
-      const response = await fetch('http://localhost:5002/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: identifier.trim().toLowerCase(), password }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-      localStorage.setItem('token', data.token);
+    
+    const loginPromise = api.post('/auth/login', { 
+      email: identifier.trim().toLowerCase(), 
+      password 
+    });
+
+    toast.promise(loginPromise, {
+      loading: 'Authenticating...',
+      success: 'Login successful!',
+      error: (err) => err.response?.data?.message || 'Invalid email, username or password'
+    }).then((response) => {
+      const data = response.data;
+      localStorage.setItem('access_token', data.token);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_role', data.role);
       localStorage.setItem('user_id', data._id);
@@ -69,30 +71,27 @@ export default function LoginPage() {
       let redirect = params.get('redirect');
       
       if (!redirect || redirect === '/') {
-        if (data.role === 'admin') {
-          redirect = '/admin';
-        } else if (data.role === 'customer') {
-          redirect = '/dashboard/customer';
-        } else if (data.role === 'labour') {
-          redirect = '/dashboard/labour';
-        } else if (data.role === 'contractor') {
-          redirect = '/dashboard/contractor';
-        } else {
-          redirect = '/profile';
-        }
+        if (data.role === 'admin') redirect = '/admin';
+        else if (data.role === 'customer') redirect = '/dashboard/customer';
+        else if (data.role === 'labour') redirect = '/dashboard/labour';
+        else if (data.role === 'contractor') redirect = '/dashboard/contractor';
+        else redirect = '/profile';
       }
       
-      window.location.href = redirect;
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Invalid email, username or password');
-    } finally {
+      setTimeout(() => {
+        window.location.href = redirect;
+      }, 1000);
+    }).catch((err) => {
+      setErrorMessage(err.response?.data?.message || 'Invalid credentials');
+    }).finally(() => {
       setIsLoading(false);
-    }
+    });
   };
 
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-brand-navy brand-bg-image p-4">
+      <Toaster position="top-center" />
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-xl relative pt-12">
         <Link href="/" className="absolute top-4 left-4 text-xs font-semibold text-gray-500 hover:text-brand-amber dark:text-zinc-400 dark:hover:text-brand-amber flex items-center gap-1 transition-all">
           ← Back to Home

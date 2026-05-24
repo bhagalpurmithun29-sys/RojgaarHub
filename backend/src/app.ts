@@ -14,6 +14,7 @@ import contractorRoutes from './routes/contractorRoutes';
 import communicationRoutes from './routes/communicationRoutes';
 import securityRoutes from './routes/securityRoutes';
 import supportRoutes from './routes/supportRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ app.use('/api/contractors', contractorRoutes);
 app.use('/api/communications', communicationRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('RozgaarHub API is running...');

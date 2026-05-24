@@ -141,6 +141,8 @@ export default function AdminDashboard() {
             status: uiStatus,
             email: u.email,
             phone: u.phone,
+            aadhaarCard: profile?.aadhaarCard,
+            panCard: profile?.panCard,
           };
         });
         setUsers(mappedUsers);
@@ -747,7 +749,14 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4 font-mono font-bold">{u.id}</td>
                         <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{u.name}</td>
                         <td className="px-6 py-4 text-amber-600 font-bold">
-                          ⚠️ Aadhaar document checks pending verification.
+                          <div className="flex gap-2">
+                            {(u as any).aadhaarCard ? (
+                              <a href={(u as any).aadhaarCard} target="_blank" rel="noreferrer" className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded hover:underline">View Aadhaar</a>
+                            ) : <span>⚠️ Aadhaar pending</span>}
+                            {(u as any).panCard ? (
+                              <a href={(u as any).panCard} target="_blank" rel="noreferrer" className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded hover:underline">View PAN</a>
+                            ) : <span>⚠️ PAN pending</span>}
+                          </div>
                         </td>
                         <td className="px-6 py-4 font-mono text-gray-400">{u.phone}</td>
                         <td className="px-6 py-4 text-right space-x-2">

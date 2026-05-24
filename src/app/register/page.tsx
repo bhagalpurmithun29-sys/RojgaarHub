@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import api from '@/utils/api';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -25,10 +27,9 @@ export default function RegisterPage() {
     }
     setUsernameStatus('checking');
     try {
-      const res = await fetch(`http://localhost:5002/api/auth/check-username?username=${username}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUsernameStatus(data.available ? 'available' : 'taken');
+      const res = await api.get(`/auth/check-username?username=${username}`);
+      if (res.status === 200) {
+        setUsernameStatus(res.data.available ? 'available' : 'taken');
       } else {
         setUsernameStatus('idle');
       }
@@ -58,30 +59,28 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usernameStatus === 'taken') {
-      alert('Please choose an available username.');
+      toast.error('Please choose an available username.');
       return;
     }
     setIsLoading(true);
-    try {
-      const response = await fetch('http://localhost:5002/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          username: formData.username,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          role: formData.role,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-      localStorage.setItem('token', data.token);
+    
+    // We will use toast.promise for a beautiful loading/success/error UX
+    const registerPromise = api.post('/auth/register', {
+      name: formData.name,
+      username: formData.username,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      role: formData.role,
+    });
+
+    toast.promise(registerPromise, {
+      loading: 'Creating your account...',
+      success: 'Account created successfully!',
+      error: (err) => err.response?.data?.message || 'Registration failed. Check password requirements.'
+    }).then((response) => {
+      const data = response.data;
+      localStorage.setItem('access_token', data.token);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_role', data.role);
       localStorage.setItem('user_id', data._id);
@@ -90,27 +89,26 @@ export default function RegisterPage() {
       let redirect = params.get('redirect');
       
       if (!redirect || redirect === '/') {
-        if (data.role === 'customer') {
-          redirect = '/dashboard/customer';
-        } else if (data.role === 'labour') {
-          redirect = '/dashboard/labour';
-        } else if (data.role === 'contractor') {
-          redirect = '/dashboard/contractor';
-        } else {
-          redirect = '/';
-        }
+        if (data.role === 'customer') redirect = '/dashboard/customer';
+        else if (data.role === 'labour') redirect = '/dashboard/labour';
+        else if (data.role === 'contractor') redirect = '/dashboard/contractor';
+        else redirect = '/';
       }
-      window.location.href = redirect;
-    } catch (err: any) {
-      alert(err.message || 'Registration failed. Please make sure the password contains uppercase, lowercase, numbers, and special characters.');
-    } finally {
+      
+      setTimeout(() => {
+        window.location.href = redirect;
+      }, 1000);
+    }).catch((err) => {
+      // Error is handled by toast
+    }).finally(() => {
       setIsLoading(false);
-    }
+    });
   };
 
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-brand-navy brand-bg-image p-4">
+      <Toaster position="top-center" />
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-xl relative pt-12">
         <Link href="/" className="absolute top-4 left-4 text-xs font-semibold text-gray-500 hover:text-brand-amber dark:text-zinc-400 dark:hover:text-brand-amber flex items-center gap-1 transition-all">
           ← Back to Home

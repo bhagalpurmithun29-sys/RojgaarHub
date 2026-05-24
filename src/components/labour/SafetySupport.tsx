@@ -5,11 +5,19 @@ import {
   MessageSquare, Mail, HelpCircle, CheckCircle2, X,
   Plus, Camera, Trash2, MapPin, Search
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 export default function SafetySupport() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSosConfirm, setShowSosConfirm] = useState(false);
   const [sosActive, setSosActive] = useState(false);
+  
+  // Complaint Form State
+  const [issueCategory, setIssueCategory] = useState('Harassment / Abuse');
+  const [bookingId, setBookingId] = useState('');
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emergencyContacts = [
     { id: 1, name: 'Ravi Kumar', relation: 'Brother', phone: '+91 98765 43210' },
@@ -21,11 +29,43 @@ export default function SafetySupport() {
     { id: 'TKT1082', type: 'Support', issue: 'Withdrawal not received', status: 'In Progress', date: 'Yesterday' }
   ];
 
-  const handleSOS = () => {
+  const handleSOS = async () => {
     setShowSosConfirm(false);
     setSosActive(true);
-    // In real app, trigger API calls here
+    try {
+      const res = await api.post('/support/sos', {
+        coordinates: { lat: 28.6139, lng: 77.2090 }, // mock coords
+        emergencyContacts: emergencyContacts.map(c => c.phone)
+      });
+      toast.success(res.data.message || 'SOS Triggered successfully!');
+    } catch (err: any) {
+      toast.error('Failed to trigger SOS');
+    }
+    
     setTimeout(() => setSosActive(false), 5000); // Auto reset for demo
+  };
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim()) {
+      toast.error('Description is required');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/support/disputes', {
+        bookingId: bookingId || null,
+        reason: `${issueCategory}: ${description}`
+      });
+      toast.success(res.data.message || 'Report submitted successfully');
+      setBookingId('');
+      setDescription('');
+      setActiveTab('overview');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to submit report');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -196,10 +236,14 @@ export default function SafetySupport() {
             {/* Raise Complaint Form */}
             <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-gray-100 dark:border-zinc-800 shadow-sm">
               <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-6">Raise a Complaint / Report</h3>
-              <form className="space-y-4">
+              <form onSubmit={handleReportSubmit} className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">Issue Category</label>
-                  <select className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-amber text-gray-900 dark:text-white">
+                  <select 
+                    value={issueCategory} 
+                    onChange={(e) => setIssueCategory(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-amber text-gray-900 dark:text-white"
+                  >
                     <option>Harassment / Abuse</option>
                     <option>Fraud Activity</option>
                     <option>Payment Issue</option>
@@ -208,11 +252,23 @@ export default function SafetySupport() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">Booking ID (Optional)</label>
-                  <input type="text" placeholder="e.g. RZH-24581" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-amber text-gray-900 dark:text-white" />
+                  <input 
+                    type="text" 
+                    value={bookingId}
+                    onChange={(e) => setBookingId(e.target.value)}
+                    placeholder="e.g. 64b3a... (ObjectId)" 
+                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-amber text-gray-900 dark:text-white" 
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">Description</label>
-                  <textarea rows={4} placeholder="Describe exactly what happened..." className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-amber text-gray-900 dark:text-white resize-none"></textarea>
+                  <textarea 
+                    rows={4} 
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe exactly what happened..." 
+                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-amber text-gray-900 dark:text-white resize-none"
+                  ></textarea>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-wider block mb-2">Upload Evidence (Images/Audio)</label>
@@ -222,8 +278,8 @@ export default function SafetySupport() {
                     <p className="text-xs text-gray-500 mt-1">Supports JPG, PNG, PDF</p>
                   </div>
                 </div>
-                <button type="button" className="w-full bg-brand-amber hover:bg-brand-orange text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-brand-amber/20 mt-2">
-                  Submit Report
+                <button disabled={isSubmitting} type="submit" className="w-full bg-brand-amber hover:bg-brand-orange text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-brand-amber/20 mt-2 disabled:opacity-50">
+                  {isSubmitting ? 'Submitting...' : 'Submit Report'}
                 </button>
               </form>
             </div>

@@ -11,6 +11,7 @@ import RatingsReviews from '@/components/customer/RatingsReviews';
 import ChatCenter from '@/components/customer/ChatCenter';
 import CustomerWallet from '@/components/customer/CustomerWallet';
 import SecuritySettings from '@/components/customer/SecuritySettings';
+import api from '@/utils/api';
 import {
   Home, Search, MapPin, Clock, History, Heart,
   Wallet, ShieldAlert, Mic, User, Star, ChevronRight,
@@ -42,12 +43,9 @@ export default function CustomerDashboard() {
     // Fetch real profile from DB
     const fetchGlobalProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5002/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const res = await api.get('/auth/me');
+        if (res.status === 200) {
+          const data = res.data;
           if (data.name) setUserName(data.name);
           if (data.profileImage) setProfileImage(data.profileImage);
           if (data.username) setUserHandle(data.username);
@@ -278,12 +276,9 @@ function HomeTab({ userName, userHandle, location, setActiveTab, setSettingsExpa
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5002/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const res = await api.get('/auth/me');
+        if (res.status === 200) {
+          const data = res.data;
           setStats({
             totalBookings: data.statistics?.totalBookings || 0,
             activeBookings: data.statistics?.activeBookings || 0,

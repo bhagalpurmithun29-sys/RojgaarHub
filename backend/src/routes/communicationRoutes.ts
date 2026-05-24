@@ -3,6 +3,7 @@ import { protect } from '../middlewares/authMiddleware';
 import {
   sendMessage,
   getChatHistory,
+  getConversations,
   deleteMessage,
   blockUser,
   reportUser,
@@ -11,6 +12,7 @@ import {
 const router = express.Router();
 
 router.post('/messages', protect, sendMessage);
+router.get('/conversations', protect, getConversations);
 router.get('/chat/:receiverId', protect, getChatHistory);
 router.delete('/messages/:id', protect, deleteMessage);
 router.post('/block', protect, blockUser);

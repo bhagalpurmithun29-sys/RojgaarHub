@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Clock, Phone, MessageSquare, AlertTriangle, 
   Camera, CheckCircle2, ShieldAlert, Navigation, Lock, 
   UploadCloud, Truck, Wrench, IndianRupee, ArrowRight
 } from 'lucide-react';
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 type Step = 'accepted' | 'journey' | 'arrived' | 'started' | 'completed';
 
@@ -13,19 +15,51 @@ export default function ActiveBooking() {
   const [otpInput, setOtpInput] = useState(['', '', '', '']);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Mock Data
-  const booking = {
-    id: 'RZH-24581',
-    customerName: 'Mithun Kumar',
-    category: 'Electrician Work',
-    time: 'Today – 10:00 AM',
-    distance: '2.5 km',
-    eta: '8 min',
-    location: 'Shimla Main Road, Near Clock Tower',
-    payment: {
-      customerPaid: 1000,
-      fee: 50,
-      earnings: 950
+  const [booking, setBooking] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchActiveBooking();
+  }, []);
+
+  const fetchActiveBooking = async () => {
+    try {
+      const res = await api.get('/bookings');
+      if (res.status === 200) {
+        // Find the first active booking (accepted, arrived, work_started)
+        const active = res.data.find((b: any) => 
+          ['accepted', 'arrived', 'work_started'].includes(b.status)
+        );
+
+        if (active) {
+          setBooking({
+            id: active._id,
+            displayId: active._id.substring(0, 8).toUpperCase(),
+            customerName: active.customer?.name || 'Customer',
+            category: active.bookingType || 'General Work',
+            time: `${new Date(active.date).toLocaleDateString()} – ${active.timeSlot}`,
+            distance: '2.5 km', // Mock
+            eta: '8 min', // Mock
+            location: active.address || 'Address hidden',
+            payment: {
+              customerPaid: active.totalAmount || 0,
+              fee: active.totalAmount ? active.totalAmount * 0.1 : 0,
+              earnings: active.totalAmount ? active.totalAmount * 0.9 : 0
+            }
+          });
+
+          // Map DB status to UI step
+          if (active.status === 'accepted') setCurrentStep('journey');
+          else if (active.status === 'arrived') setCurrentStep('arrived');
+          else if (active.status === 'work_started') setCurrentStep('started');
+        } else {
+          setBooking(null); // No active booking
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching active booking', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,13 +87,41 @@ export default function ActiveBooking() {
     }
   };
 
-  const handleVerifyOtp = () => {
-    // Mock verification
-    if (currentStep === 'journey') setCurrentStep('arrived');
-    else if (currentStep === 'arrived') setCurrentStep('started');
-    else if (currentStep === 'started') setCurrentStep('completed');
-    
-    setOtpInput(['', '', '', '']); // Reset OTP
+  const handleVerifyOtp = async () => {
+    if (!booking) return;
+
+    let targetStatus = '';
+    if (currentStep === 'journey') targetStatus = 'arrived';
+    else if (currentStep === 'arrived') targetStatus = 'work_started';
+    else if (currentStep === 'started') targetStatus = 'completed';
+
+    const enteredOtp = otpInput.join('');
+
+    try {
+      const promise = api.put(`/bookings/${booking.id}/status`, {
+        status: targetStatus,
+        otp: enteredOtp
+      });
+
+      toast.promise(promise, {
+        loading: 'Verifying OTP...',
+        success: 'OTP Verified Successfully!',
+        error: 'Invalid OTP. Please try again.'
+      });
+
+      const res = await promise;
+      if (res.status === 200) {
+        // Move to next step locally
+        if (currentStep === 'journey') setCurrentStep('arrived');
+        else if (currentStep === 'arrived') setCurrentStep('started');
+        else if (currentStep === 'started') setCurrentStep('completed');
+        
+        setOtpInput(['', '', '', '']); // Reset OTP
+      }
+    } catch (err: any) {
+      // Toast already handles error message
+      setOtpInput(['', '', '', '']); // Clear failed OTP
+    }
   };
 
   const getOtpPrompt = () => {
@@ -68,6 +130,28 @@ export default function ActiveBooking() {
     if (currentStep === 'started') return 'Enter Completion OTP';
     return '';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20 animate-pulse">
+        <div className="text-gray-500 font-bold flex items-center gap-2">
+          <Truck className="w-5 h-5 animate-bounce" /> Loading active booking...
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800">
+        <div className="w-20 h-20 bg-gray-50 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <MapPin className="w-10 h-10 text-gray-300 dark:text-zinc-600" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Active Booking</h3>
+        <p className="text-gray-500 max-w-md mx-auto">You don't have any ongoing job right now. Accept a new job from the Incoming Requests tab to see it here.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -79,7 +163,7 @@ export default function ActiveBooking() {
             <div className="animate-pulse w-2 h-2 rounded-full bg-green-500"></div>
             <span className="text-xs font-bold text-green-600 uppercase tracking-wider">Live Booking</span>
           </div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Booking #{booking.id}</h2>
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Booking #{booking.displayId}</h2>
         </div>
         <div className="flex gap-2">
           <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm font-bold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 transition-colors shadow-sm">

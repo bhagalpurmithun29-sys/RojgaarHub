@@ -255,3 +255,24 @@ export const generateInvoiceDetails = async (req: AuthRequest, res: Response) =>
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get Wallet details
+// @route   GET /api/payments/wallet
+// @access  Private
+export const getWallet = async (req: AuthRequest, res: Response) => {
+  try {
+    let wallet = await Wallet.findOne({ ownerId: req.user._id });
+    
+    if (!wallet) {
+      // Auto-create empty wallet
+      wallet = await Wallet.create({ ownerId: req.user._id, balance: 0, transactions: [], withdrawHistory: [] });
+    }
+
+    res.json({
+      success: true,
+      wallet
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
