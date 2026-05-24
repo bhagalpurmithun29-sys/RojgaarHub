@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UploadCloud, CheckCircle, FileText, AlertTriangle, UserCheck } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { UploadCloud, CheckCircle, FileText, AlertTriangle, UserCheck, Camera } from 'lucide-react';
 import api from '@/utils/api';
 import toast from 'react-hot-toast';
 
@@ -9,6 +9,52 @@ export default function DocumentVerification() {
   const [workCertFile, setWorkCertFile] = useState<File | null>(null);
   const [addressProofFile, setAddressProofFile] = useState<File | null>(null);
   const [bankFile, setBankFile] = useState<File | null>(null);
+
+  // Camera state
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error("Camera access denied", err);
+      alert("Could not access camera. Please allow permissions or upload manually.");
+      setShowCamera(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        canvasRef.current.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "selfie_capture.jpg", { type: "image/jpeg" });
+            setSelfieFile(file);
+            stopCamera();
+          }
+        }, "image/jpeg", 0.9);
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setShowCamera(false);
+  };
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -131,11 +177,40 @@ export default function DocumentVerification() {
                 <p className="font-bold text-sm text-gray-800 dark:text-white">Aadhaar Upload <span className="text-red-500">*</span></p>
                 {aadhaarFile && <p className="text-xs text-green-500 mt-1 truncate">{aadhaarFile.name}</p>}
               </div>
-              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group text-center">
-                <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'selfie')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                <UserCheck className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
-                <p className="font-bold text-sm text-gray-800 dark:text-white">Selfie Upload <span className="text-red-500">*</span></p>
-                {selfieFile && <p className="text-xs text-green-500 mt-1 truncate">{selfieFile.name}</p>}
+              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-white dark:bg-zinc-800 relative group flex flex-col items-center justify-center min-h-[140px]">
+                {!showCamera ? (
+                  <>
+                    <UserCheck className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
+                    <p className="font-bold text-sm text-gray-800 dark:text-white mb-2">Selfie Upload <span className="text-red-500">*</span></p>
+                    <button 
+                      type="button"
+                      onClick={startCamera} 
+                      className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-sm relative z-20"
+                    >
+                      <Camera className="w-4 h-4"/> {selfieFile ? 'Retake Photo' : 'Take Photo'}
+                    </button>
+                    {selfieFile && (
+                      <div className="mt-3 flex items-center gap-2 bg-green-50 dark:bg-green-500/10 p-2 rounded-lg border border-green-200 dark:border-green-500/20 w-full justify-center">
+                        <img src={URL.createObjectURL(selfieFile)} alt="Selfie" className="w-8 h-8 rounded object-cover border border-white" />
+                        <p className="text-xs text-green-600 dark:text-green-500 font-bold truncate">Captured</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center space-y-3 w-full relative z-20">
+                    <div className="relative w-full max-w-[200px] rounded-lg overflow-hidden bg-black aspect-square flex items-center justify-center border-2 border-gray-100 dark:border-zinc-700">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover transform scale-x-[-1]"></video>
+                      <canvas ref={canvasRef} className="hidden"></canvas>
+                      <div className="absolute inset-0 border-[20px] border-black/30 rounded-full scale-[1.2] pointer-events-none"></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={stopCamera} className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-white font-bold rounded-lg text-xs transition-colors">Cancel</button>
+                      <button type="button" onClick={capturePhoto} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1 shadow-md">
+                        <Camera className="w-3 h-3"/> Capture
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

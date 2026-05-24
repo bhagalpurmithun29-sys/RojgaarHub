@@ -15,6 +15,7 @@ import ContractorAnalytics from '@/components/contractor/ContractorAnalytics';
 import ContractorVerification from '@/components/contractor/ContractorVerification';
 import ProjectHistory from '@/components/contractor/ProjectHistory';
 import LiveTeamTracking from '@/components/contractor/LiveTeamTracking';
+import ContractorSettings from '@/components/contractor/ContractorSettings';
 import LabourChatCenter from '@/components/labour/LabourChatCenter';
 import EarningsWallet from '@/components/labour/EarningsWallet';
 import SafetySupport from '@/components/labour/SafetySupport';
@@ -199,6 +200,7 @@ export default function ContractorDashboard() {
           {activeTab === 'verification' && <ContractorVerification />}
           {activeTab === 'history' && <ProjectHistory />}
           {activeTab === 'tracking' && <LiveTeamTracking />}
+          {activeTab === 'settings' && <ContractorSettings />}
           
           {/* Re-used components */}
           {activeTab === 'chat' && (
@@ -210,7 +212,7 @@ export default function ContractorDashboard() {
           {activeTab === 'safety' && <SafetySupport />}
 
           {/* Placeholders for others */}
-          {['settings'].includes(activeTab) && (
+          {[''].includes(activeTab) && (
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 p-12 text-center shadow-sm">
               <div className="w-20 h-20 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Briefcase className="w-10 h-10 text-gray-400" />
