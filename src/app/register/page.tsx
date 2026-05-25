@@ -85,6 +85,7 @@ function RegisterForm() {
       error: (err) => err.response?.data?.message || 'Registration failed. Check password requirements.'
     }).then((response) => {
       const data = response.data;
+      localStorage.setItem('token', data.token);
       localStorage.setItem('access_token', data.token);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_role', data.role);

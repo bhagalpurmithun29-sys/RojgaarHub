@@ -152,10 +152,6 @@ export default function Home() {
           
           <Link 
             href="/admin" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleProtectedRoute('/admin');
-            }}
             className="text-sm font-semibold px-4 py-2 text-brand-orange dark:text-brand-amber hover:bg-amber-50/50 dark:hover:bg-zinc-800 rounded-lg transition-colors"
           >
             {t.admin}
@@ -273,10 +269,6 @@ export default function Home() {
             <p className="text-xs text-gray-500 dark:text-zinc-400">{t.adminControlDesc}</p>
             <Link 
               href="/admin" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleProtectedRoute('/admin');
-              }}
               className="inline-block text-xs font-semibold text-brand-orange dark:text-brand-amber hover:underline"
             >
               {language === 'en' ? 'Access Admin Console →' : 'एडमिन कंसोल पर जाएं →'}

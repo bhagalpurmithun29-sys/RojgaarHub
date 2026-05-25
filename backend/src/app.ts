@@ -26,20 +26,22 @@ connectDB();
 // Production Security Layers Configuration
 app.use(helmet()); // Secure HTTP Response headers
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again after 15 minutes.'
-});
-app.use('/api/', limiter); // Apply rate limiter to all API calls
-
-app.use(cookieParser()); // Parse secure cookies for sessions
+// CORS must be before rate limiter so that 429 responses include CORS headers
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser()); // Parse secure cookies for sessions
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 1000 requests per windowMs for dev
+  message: 'Too many requests from this IP, please try again after 15 minutes.'
+});
+app.use('/api/', limiter); // Apply rate limiter to all API calls
 
 // Custom CSRF validation check layer for sensitive API mutations (POST/PUT/DELETE)
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -50,6 +52,27 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`🔒 Security Audit: CSRF Validation Header checked: ${csrfHeader || 'Not Provided'}`);
   }
   next();
+});
+
+// Public System Health & Feature Flags (for Maintenance Mode polling)
+import FeatureFlag from './models/FeatureFlag';
+import CmsPage from './models/CmsPage';
+
+app.get('/api/system/health', async (req: Request, res: Response) => {
+  try {
+    const maintenanceFlag = await FeatureFlag.findOne({ key: 'maintenanceMode' });
+    const etaPage = await CmsPage.findOne({ key: 'maintenanceEta' });
+    const helplinePage = await CmsPage.findOne({ key: 'helpline' });
+    
+    res.json({
+      status: 'ok',
+      maintenanceMode: maintenanceFlag?.isEnabled || false,
+      maintenanceEta: etaPage?.content || '45 minutes',
+      helpline: helplinePage?.content || '+91 99999 88888'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'System Health Check Failed' });
+  }
 });
 
 // Routes

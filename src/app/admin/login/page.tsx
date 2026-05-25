@@ -5,11 +5,8 @@ import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import api from '@/utils/api';
 import toast, { Toaster } from 'react-hot-toast';
-// import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input';
-// import { Label } from '@/components/ui/label';
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,22 +15,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // If user is already logged in, redirect them to their dashboard
       const token = localStorage.getItem('token');
       const role = localStorage.getItem('user_role');
-      if (token && role) {
-        if (role === 'admin') {
-          window.location.href = '/admin';
-        } else if (role === 'customer') {
-          window.location.href = '/dashboard/customer';
-        } else if (role === 'labour') {
-          window.location.href = '/dashboard/labour';
-        } else if (role === 'contractor') {
-          window.location.href = '/dashboard/contractor';
-        } else {
-          window.location.href = '/profile';
-        }
-        return;
+      if (token && role === 'admin') {
+        window.location.href = '/admin';
       }
     }
   }, []);
@@ -43,51 +28,41 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMessage('');
     
-    const loginPromise = api.post('/auth/login', { 
-      email: identifier.trim().toLowerCase(), 
-      password 
-    });
+    const toastId = toast.loading('Authenticating Admin...');
 
-    toast.promise(loginPromise, {
-      loading: 'Authenticating...',
-      success: 'Login successful!',
-      error: (err) => err.response?.data?.message || 'Invalid email, username or password'
-    }).then((response) => {
+    try {
+      const response = await api.post('/auth/login', { 
+        email: identifier.trim().toLowerCase(), 
+        password 
+      });
       const data = response.data;
       
-      // Prevent admin login
-      if (data.role === 'admin') {
-        setErrorMessage('Admin users must login through the Admin Portal.');
+      // Enforce admin only
+      if (data.role !== 'admin') {
+        setErrorMessage('Access denied. Admin privileges required.');
+        toast.error('Access denied. Admin privileges required.', { id: toastId });
         setIsLoading(false);
         return;
       }
 
+      toast.success('Admin Login successful!', { id: toastId });
+      
       localStorage.setItem('token', data.token);
       localStorage.setItem('access_token', data.token);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_role', data.role);
       localStorage.setItem('user_id', data._id);
       
-      const params = new URLSearchParams(window.location.search);
-      let redirect = params.get('redirect');
-      
-      if (!redirect || redirect === '/' || redirect.includes('/admin')) {
-        if (data.role === 'customer') redirect = '/dashboard/customer';
-        else if (data.role === 'labour') redirect = '/dashboard/labour';
-        else if (data.role === 'contractor') redirect = '/dashboard/contractor';
-        else redirect = '/profile';
-      }
-      
       setTimeout(() => {
-        window.location.href = redirect;
+        window.location.href = '/admin';
       }, 1000);
-    }).catch((err) => {
-      setErrorMessage(err.response?.data?.message || 'Invalid credentials');
-    }).finally(() => {
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Invalid admin credentials');
+      toast.error(err.response?.data?.message || 'Invalid admin credentials', { id: toastId });
+    } finally {
       setIsLoading(false);
-    });
+    }
   };
-
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-brand-navy brand-bg-image p-4">
@@ -98,10 +73,10 @@ export default function LoginPage() {
         </Link>
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Welcome back
+            Admin Login
           </h2>
           <p className="mt-2 text-sm text-gray-650 dark:text-zinc-400 font-medium">
-            Sign in to your RozgaarHub account
+            Secure Admin Portal Access
           </p>
         </div>
 
@@ -115,14 +90,14 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
-                Email or Username
+                Admin Email or Username
               </label>
               <input
                 id="identifier"
                 type="text"
                 required
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-brand-amber focus:outline-none focus:ring-brand-amber sm:text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-400"
-                placeholder="email@gmail.com or Username"
+                placeholder="admin@rozgaarhub.com"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
               />
@@ -178,15 +153,12 @@ export default function LoginPage() {
             disabled={isLoading}
             className="group relative flex w-full justify-center rounded-md border border-transparent bg-gradient-to-r from-brand-amber to-brand-orange px-4 py-2 text-sm font-semibold text-white hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-brand-amber focus:ring-offset-2 disabled:opacity-50 transition-all uppercase tracking-wider"
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? 'Authorizing Admin...' : 'Sign in as Admin'}
           </button>
         </form>
         
-        <div className="mt-6 text-center text-sm">
-          <span className="text-gray-600 dark:text-zinc-400">Don't have an account? </span>
-          <Link href="/register" className="font-medium text-brand-orange hover:text-brand-amber dark:text-brand-amber">
-            Sign up
-          </Link>
+        <div className="mt-6 p-4 rounded-xl bg-amber-50/50 dark:bg-brand-amber/15 border border-brand-amber/20 text-center text-xs font-semibold text-brand-orange dark:text-brand-amber flex items-center justify-center gap-1.5 shadow-sm">
+          🔒 Secure Admin Portal Gate — All sessions are audited.
         </div>
       </div>
     </div>

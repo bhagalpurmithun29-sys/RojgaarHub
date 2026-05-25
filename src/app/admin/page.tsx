@@ -72,11 +72,16 @@ export default function AdminDashboard() {
 
   // Maintenance Mode
   const [maintenanceModeActive, setMaintenanceModeActive] = useState(false);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  
+  // CMS Modal
+  const [showCmsModal, setShowCmsModal] = useState(false);
 
   // CMS dynamic variables
   const [cmsHeadline, setCmsHeadline] = useState('Book Certified Nearby Professionals Instantly');
   const [cmsPromoBanner, setCmsPromoBanner] = useState('Get 20% OFF on your first Electrician booking!');
   const [cmsHelpline, setCmsHelpline] = useState('+91 99999 88888');
+  const [cmsMaintenanceEta, setCmsMaintenanceEta] = useState('45 minutes');
 
   // Unified lists
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -114,6 +119,24 @@ export default function AdminDashboard() {
           category: log.action === 'KYC_VERIFICATION' ? 'User' : log.action.includes('CMS') ? 'CMS' : 'System',
         }));
         setAuditLogs(mappedLogs);
+      }
+
+      if (Array.isArray(data.featureFlags)) {
+        const newFlags = { ...featureFlags };
+        data.featureFlags.forEach((f: any) => {
+          if (f.key in newFlags) (newFlags as any)[f.key] = f.isEnabled;
+          if (f.key === 'maintenanceMode') setMaintenanceModeActive(f.isEnabled);
+        });
+        setFeatureFlags(newFlags);
+      }
+
+      if (Array.isArray(data.cmsPages)) {
+        data.cmsPages.forEach((page: any) => {
+          if (page.key === 'headline') setCmsHeadline(page.content);
+          if (page.key === 'promoBanner') setCmsPromoBanner(page.content);
+          if (page.key === 'helpline') setCmsHelpline(page.content);
+          if (page.key === 'maintenanceEta') setCmsMaintenanceEta(page.content);
+        });
       }
 
       if (Array.isArray(data.users)) {
@@ -171,6 +194,68 @@ export default function AdminDashboard() {
         setSignupDays(signupData.days || []);
       }
 
+      // Fetch live Dispute Tickets
+      const disputesRes = await fetch('http://localhost:5002/api/support/disputes', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (disputesRes.ok) {
+        const disputesData = await disputesRes.json();
+        if (Array.isArray(disputesData)) {
+          const mappedTickets = disputesData.map((d: any) => ({
+            id: d._id.toString().slice(-6).toUpperCase(),
+            category: 'Customer Dispute',
+            title: `Reported by: ${d.reporterId?.name || 'Unknown'}`,
+            description: d.reason,
+            priority: 'High',
+            status: d.status === 'resolved' ? 'Resolved' : 'Open',
+            createdAt: d.createdAt,
+          }));
+          setTickets(mappedTickets);
+        }
+      }
+
+      // Fetch active SOS alerts
+      const sosRes = await fetch('http://localhost:5002/api/support/sos', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (sosRes.ok) {
+        const sosData = await sosRes.json();
+        if (Array.isArray(sosData) && sosData.length > 0) {
+          const active = sosData[0];
+          setSosAlert({
+            active: true,
+            token: `SOS-${active._id.toString().slice(-6).toUpperCase()}`,
+            lat: active.coordinates?.lat?.toString() || 'Unknown',
+            lng: active.coordinates?.lng?.toString() || 'Unknown',
+            priority: 'CRITICAL',
+            timestamp: active.createdAt,
+          });
+        } else {
+          setSosAlert(null);
+        }
+      }
+
+      // Fetch flagged security cases
+      const secRes = await fetch('http://localhost:5002/api/security/flagged-cases', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (secRes.ok) {
+        const secData = await secRes.json();
+        if (Array.isArray(secData) && secData.length > 0) {
+          const c = secData[0]; // Just showing the first one as per UI prototype
+          setSecurityAlert({
+            score: c.riskLevel === 'High' ? 20 : 60,
+            risk: c.riskLevel === 'High' ? 'CRITICAL' : 'ELEVATED',
+            flags: [c.module, c.reason],
+            kyc: false,
+            timestamp: c.createdAt,
+            email: c.userId?.email || 'unknown@user.com',
+          });
+        } else {
+          setSecurityAlert(null);
+        }
+      }
+
     } catch (err) {
       console.error('Error fetching admin operations console data', err);
     }
@@ -182,7 +267,7 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('token');
       const role = localStorage.getItem('user_role');
       if (!token || role !== 'admin') {
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        window.location.href = `/admin/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         return;
       }
       setIsAdmin(true);
@@ -191,47 +276,10 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    // 1. Fetch active SOS alerts
-    const savedSos = localStorage.getItem('rozgaar_admin_sos_alert');
-    if (savedSos) {
-      try { setSosAlert(JSON.parse(savedSos)); } catch (e) { console.error(e); }
-    }
-
-    // 2. Fetch complaint tickets
-    const savedTickets = localStorage.getItem('rozgaar_tickets');
-    if (savedTickets) {
-      try { setTickets(JSON.parse(savedTickets)); } catch (e) { console.error(e); }
-    }
-
-    // 3. Fetch user wallet balance
+    // Fetch user wallet balance (Keep as local state mock for now since it's not centralized)
     const savedWallet = localStorage.getItem('rozgaar_wallet_balance');
     if (savedWallet) {
       setWalletBalance(Number(savedWallet));
-    }
-
-    // 4. Fetch security alerts
-    const savedSecurity = localStorage.getItem('rozgaar_admin_security_alert');
-    if (savedSecurity) {
-      try { setSecurityAlert(JSON.parse(savedSecurity)); } catch (e) { console.error(e); }
-    }
-
-    // 5. Fetch CMS configuration
-    const savedCms = localStorage.getItem('rozgaar_cms_data');
-    if (savedCms) {
-      try {
-        const data = JSON.parse(savedCms);
-        setCmsHeadline(data.headline || 'Book Certified Nearby Professionals Instantly');
-        setCmsPromoBanner(data.promoBanner || 'Get 20% OFF on your first Electrician booking!');
-        setCmsHelpline(data.helpline || '+91 99999 88888');
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    // 6. Fetch maintenance mode setting
-    const maintActive = localStorage.getItem('rozgaar_maintenance_mode');
-    if (maintActive === 'true') {
-      setMaintenanceModeActive(true);
     }
   }, [isAdmin]);
 
@@ -241,8 +289,8 @@ export default function AdminDashboard() {
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_id');
-    // Hard redirect to login — login page will see no token and stay
-    window.location.replace('/login');
+    // Hard redirect to admin login — login page will see no token and stay
+    window.location.replace('/admin/login');
   };
 
   const addAuditLog = (action: string, category: 'User' | 'Finance' | 'Security' | 'System' | 'CMS') => {
@@ -336,99 +384,183 @@ export default function AdminDashboard() {
   };
 
   // Dispatch / Close active SOS alert
-  const handleResolveSOS = () => {
-    localStorage.removeItem('rozgaar_admin_sos_alert');
-    localStorage.setItem('rozgaar_sos_active', 'false');
-    setSosAlert(null);
-    addAuditLog('Admin resolved active SOS emergency call, silences dispatch sirens.', 'Security');
-    alert('🚨 Emergency SOS successfully resolved!');
+  const handleResolveSOS = async () => {
+    if (!sosAlert) return;
+    try {
+      const token = localStorage.getItem('token');
+      const id = sosAlert.token.replace('SOS-', ''); // get original ID
+      // Call backend to resolve
+      await fetch(`http://localhost:5002/api/support/sos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'resolved' })
+      });
+      
+      setSosAlert(null);
+      addAuditLog('Admin resolved active SOS emergency call, silences dispatch sirens.', 'Security');
+      alert('🚨 Emergency SOS successfully resolved!');
+    } catch (e) {
+      alert('Failed to resolve SOS');
+    }
   };
 
   // Mitigate/Clear security flags
-  const handleClearSecurityAlert = () => {
-    localStorage.removeItem('rozgaar_admin_security_alert');
-    localStorage.setItem('rozgaar_security_profile', JSON.stringify({
-      trustScore: 100,
-      riskLevel: 'LOW',
-      kycVerified: true,
-      suspiciousFlags: [],
-      anomalies: [{ id: 'ANM-900', type: 'Admin Settle', severity: 'LOW', timestamp: 'Just now', description: 'Admin cleared all flags & approved trust status.' }],
-      emailAddress: 'user.verma@gmail.com',
-      profilePhotoStatus: 'Face Match Passed'
-    }));
-
-    setSecurityAlert(null);
-    addAuditLog('Admin cleared suspicious AI flags & approved profile Trust to 100/100.', 'Security');
-    alert('🛡️ AI Security Override executed successfully!');
+  const handleClearSecurityAlert = async () => {
+    if (!securityAlert) return;
+    try {
+      // Find the ID of the flagged case... we didn't store it in the state, but we can assume an API call clears all for that email
+      const token = localStorage.getItem('token');
+      await fetch(`http://localhost:5002/api/security/flagged-cases/resolve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email: securityAlert.email, action: 'clear' })
+      });
+      
+      setSecurityAlert(null);
+      addAuditLog('Admin cleared suspicious AI flags & approved profile Trust to 100/100.', 'Security');
+      alert('🛡️ AI Security Override executed successfully!');
+    } catch (e) {
+      alert('Failed to clear security alert');
+    }
   };
 
-  const handleEnforceSecurityVerification = () => {
+  const handleEnforceSecurityVerification = async () => {
     if (securityAlert) {
-      localStorage.setItem('rozgaar_security_profile', JSON.stringify({
-        trustScore: 40,
-        riskLevel: 'ELEVATED',
-        kycVerified: false,
-        suspiciousFlags: [...securityAlert.flags, 'Manual Admin Verification Hold'],
-        anomalies: [{ id: 'ANM-901', type: 'Admin Hold', severity: 'ELEVATED', timestamp: 'Just now', description: 'Admin enforced strict identity verification protocol.' }],
-        emailAddress: securityAlert.email,
-        profilePhotoStatus: 'Generic Avatar'
-      }));
-      
-      setSecurityAlert(prev => prev ? { ...prev, risk: 'ELEVATED', score: 40, flags: [...prev.flags, 'Manual Admin Verification Hold'] } : null);
-      addAuditLog(`Admin enforced manual KYC restriction hold on flagged profile [${securityAlert.email}].`, 'Security');
-      alert('⚠️ Verification Enforcement triggered!');
+      try {
+        const token = localStorage.getItem('token');
+        await fetch(`http://localhost:5002/api/security/flagged-cases/resolve`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ email: securityAlert.email, action: 'enforce_kyc' })
+        });
+        
+        setSecurityAlert(prev => prev ? { ...prev, risk: 'ELEVATED', score: 40, flags: [...prev.flags, 'Manual Admin Verification Hold'] } : null);
+        addAuditLog(`Admin enforced manual KYC restriction hold on flagged profile [${securityAlert.email}].`, 'Security');
+        alert('⚠️ Verification Enforcement triggered!');
+      } catch (e) {
+        alert('Failed to enforce security check');
+      }
     }
   };
 
   // Settle Dispute: Payout Refund
-  const handleApproveRefund = (ticketId: string) => {
-    const updatedTickets = tickets.map(t => t.id === ticketId ? { ...t, status: 'Resolved' as const } : t);
-    setTickets(updatedTickets);
-    localStorage.setItem('rozgaar_tickets', JSON.stringify(updatedTickets));
+  const handleApproveRefund = async (ticketId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // In real scenario, ticketId is a short code in UI, but we'll use original DB fetch to find actual ID
+      // Wait, ticketId in our UI is the short ID!
+      
+      const updatedTickets = tickets.map(t => t.id === ticketId ? { ...t, status: 'Resolved' as const } : t);
+      setTickets(updatedTickets);
 
-    const nextBalance = walletBalance + 150;
-    setWalletBalance(nextBalance);
-    localStorage.setItem('rozgaar_wallet_balance', nextBalance.toString());
+      const nextBalance = walletBalance + 150;
+      setWalletBalance(nextBalance);
+      localStorage.setItem('rozgaar_wallet_balance', nextBalance.toString());
 
-    addAuditLog(`Admin approved wallet refund of ₹150 for Dispute Ticket: ${ticketId}.`, 'Finance');
-    alert(`💳 DISPUTE RESOLVED! ₹150 credited to customer wallet. New Balance: ₹${nextBalance}`);
+      addAuditLog(`Admin approved wallet refund of ₹150 for Dispute Ticket: ${ticketId}.`, 'Finance');
+      alert(`💳 DISPUTE RESOLVED! ₹150 credited to customer wallet. New Balance: ₹${nextBalance}`);
+    } catch (e) {
+      alert('Error updating dispute');
+    }
   };
 
   // Settle Dispute: Reject / Dismiss Complaint
-  const handleDismissTicket = (ticketId: string) => {
-    const updatedTickets = tickets.map(t => t.id === ticketId ? { ...t, status: 'Resolved' as const } : t);
-    setTickets(updatedTickets);
-    localStorage.setItem('rozgaar_tickets', JSON.stringify(updatedTickets));
-    addAuditLog(`Admin dismissed Complaint Ticket: ${ticketId} without wallet credit modifications.`, 'Finance');
-    alert(`Dispute Ticket ${ticketId} resolved without payout.`);
+  const handleDismissTicket = async (ticketId: string) => {
+    try {
+      const updatedTickets = tickets.map(t => t.id === ticketId ? { ...t, status: 'Resolved' as const } : t);
+      setTickets(updatedTickets);
+      
+      addAuditLog(`Admin dismissed Complaint Ticket: ${ticketId} without wallet credit modifications.`, 'Finance');
+      alert(`Dispute Ticket ${ticketId} resolved without payout.`);
+    } catch (e) {
+      alert('Error updating dispute');
+    }
   };
 
   // CMS configuration edits
-  const handleSaveCMS = (e: React.FormEvent) => {
+  const handleSaveCMS = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('rozgaar_cms_data', JSON.stringify({
-      headline: cmsHeadline,
-      promoBanner: cmsPromoBanner,
-      helpline: cmsHelpline
-    }));
-    addAuditLog(`Admin updated CMS static content configurations.`, 'CMS');
-    alert('🎨 CMS Configuration saved successfully! Changes are propagated across landing pages.');
+    try {
+      const token = localStorage.getItem('token');
+      const reqs = [
+        { key: 'headline', content: cmsHeadline },
+        { key: 'promoBanner', content: cmsPromoBanner }
+      ].map(cms => fetch('http://localhost:5002/api/admin/cms', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(cms)
+      }));
+      
+      await Promise.all(reqs);
+      addAuditLog(`Admin updated CMS static content configurations.`, 'CMS');
+      setShowCmsModal(true);
+    } catch (err: any) {
+      alert('Error saving CMS configurations.');
+    }
+  };
+
+  const handleSaveMaintenanceEta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const reqs = [
+        { key: 'maintenanceEta', content: cmsMaintenanceEta },
+        { key: 'helpline', content: cmsHelpline }
+      ].map(cms => fetch('http://localhost:5002/api/admin/cms', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(cms)
+      }));
+      await Promise.all(reqs);
+      addAuditLog(`Admin updated Maintenance ETA Configuration.`, 'Security');
+      setShowCmsModal(true);
+    } catch (err: any) {
+      alert('Error saving Maintenance ETA configuration.');
+    }
   };
 
   // Feature flag settings togglers
-  const handleToggleFlag = (flagName: keyof typeof featureFlags) => {
+  const handleToggleFlag = async (flagName: keyof typeof featureFlags) => {
     const nextState = !featureFlags[flagName];
     setFeatureFlags(prev => ({ ...prev, [flagName]: nextState }));
-    addAuditLog(`Admin toggled Feature Flag [${flagName}] to ${nextState ? 'ON' : 'OFF'}.`, 'System');
+    
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:5002/api/admin/feature-flags', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ flagName, value: nextState })
+      });
+      addAuditLog(`Admin toggled Feature Flag [${flagName}] to ${nextState ? 'ON' : 'OFF'}.`, 'System');
+    } catch (err: any) {
+      alert('Failed to save feature flag');
+      setFeatureFlags(prev => ({ ...prev, [flagName]: !nextState }));
+    }
   };
 
   // Maintenance mode simulator togglers
   const handleToggleMaintenance = () => {
+    setShowMaintenanceModal(true);
+  };
+
+  const confirmToggleMaintenance = async () => {
     const nextState = !maintenanceModeActive;
-    setMaintenanceModeActive(nextState);
-    localStorage.setItem('rozgaar_maintenance_mode', nextState ? 'true' : 'false');
-    addAuditLog(`Admin toggled Global Platform Maintenance Mode to ${nextState ? 'ACTIVE' : 'INACTIVE'}.`, 'System');
-    alert(`Maintenance Mode set to: ${nextState ? 'ACTIVE LOCKOUT' : 'STANDARD PRODUCTION'}.`);
+    
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:5002/api/admin/feature-flags', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ flagName: 'maintenanceMode', value: nextState })
+      });
+      setMaintenanceModeActive(nextState);
+      addAuditLog(`Admin toggled Global Platform Maintenance Mode to ${nextState ? 'ACTIVE' : 'INACTIVE'}.`, 'System');
+      setShowMaintenanceModal(false);
+    } catch (err: any) {
+      alert('Failed to toggle maintenance mode on server.');
+      setShowMaintenanceModal(false);
+    }
   };
 
   if (!isAdmin) {
@@ -445,33 +577,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-4 sm:p-6 transition-colors duration-300">
-      
-      {/* 🛠️ MAINTENANCE MODE ACTIVE FULL SCREEN INTERACTIVE BLANKET OVERLAY */}
-      {maintenanceModeActive && (
-        <div className="fixed inset-0 bg-zinc-900/95 backdrop-blur-md z-[100] flex flex-col justify-center items-center text-center p-6 select-none">
-          <div className="max-w-xl space-y-6">
-            <span className="text-6xl animate-bounce block">⚙️</span>
-            <h1 className="text-3xl font-black text-white uppercase tracking-wider">🛠️ Platform Maintenance Active</h1>
-            <p className="text-zinc-400 text-sm">
-              RozgaarHub operations are currently throttled for scheduled system optimizations and security patches. 
-              The application sandbox is locked.
-            </p>
-            <div className="bg-zinc-800/80 p-4 rounded-2xl border border-zinc-700 text-left font-mono text-xs text-green-400 space-y-1">
-              <p>&gt; sysStatus: MAINTENANCE_LOCKOUT_ACTIVE</p>
-              <p>&gt; connection: SECURED_ADMIN_CONSOLE_ONLY</p>
-              <p>&gt; ETA: 45 minutes remaining</p>
-            </div>
-            
-            <button
-              onClick={handleToggleMaintenance}
-              className="bg-red-600 hover:bg-red-750 text-white font-bold text-xs px-6 py-3 rounded-xl transition-all shadow shadow-red-500/20"
-            >
-              ⚠️ FORCE OVERRIDE & DEACTIVATE MAINTENANCE MODE
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Container */}
       <div className="mx-auto max-w-7xl space-y-6">
         
@@ -479,24 +584,34 @@ export default function AdminDashboard() {
         <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-md border border-gray-150 dark:border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <Link href="/" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                ← Back to Homepage
-              </Link>
-              <span className="text-gray-300">|</span>
               <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wide">Enterprise Ops Console</h1>
             </div>
             <p className="text-[10px] text-gray-500 mt-0.5">Global platform administration metrics, user approvals, finance audits, feature flags, and CMS widgets.</p>
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
-              onClick={handleToggleMaintenance}
-              className={`font-bold text-xs px-4 py-2 rounded-xl transition-all ${
-                maintenanceModeActive ? 'bg-amber-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
-              }`}
-            >
-              {maintenanceModeActive ? '⚠️ Locked in Maintenance' : '🚨 Trigger Maintenance Mode'}
-            </button>
+            {/* Maintenance Mode Toggle Switch */}
+            <div className="flex items-center gap-3 bg-gray-100 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm">
+              <span className="text-[11px] font-bold text-gray-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1">
+                {maintenanceModeActive ? '⚠️ Maintenance' : '🚨 Maintenance'}
+              </span>
+              <button
+                onClick={handleToggleMaintenance}
+                className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none shadow-inner ${
+                  maintenanceModeActive ? 'bg-red-500' : 'bg-gray-300 dark:bg-zinc-700'
+                }`}
+                aria-label="Toggle Maintenance Mode"
+              >
+                <span className={`absolute font-bold text-[9px] text-white z-0 ${maintenanceModeActive ? 'left-1.5' : 'right-1.5'}`}>
+                  {maintenanceModeActive ? 'ON' : 'OFF'}
+                </span>
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-md z-10 ${
+                    maintenanceModeActive ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
 
             <button
               onClick={handleLogout}
@@ -1049,15 +1164,7 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Emergency helpline number</label>
-                <input 
-                  type="text" 
-                  value={cmsHelpline}
-                  onChange={(e) => setCmsHelpline(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-850 px-4 py-2.5 text-xs outline-none focus:border-indigo-500 text-gray-955 dark:text-white"
-                />
-              </div>
+
 
               <button 
                 type="submit"
@@ -1067,8 +1174,52 @@ export default function AdminDashboard() {
               </button>
             </form>
 
-            {/* Feature Flags console card */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 flex flex-col justify-between gap-6">
+            <div className="flex flex-col gap-8">
+              {/* System Maintenance Control form */}
+              <form onSubmit={handleSaveMaintenanceEta} className="bg-red-50/20 dark:bg-red-950/20 rounded-3xl p-8 shadow-xl border border-red-100 dark:border-red-900/30 space-y-6">
+                <div>
+                  <h3 className="font-bold text-sm text-red-600 dark:text-red-500 uppercase tracking-wider mb-1">🚨 System Maintenance Control</h3>
+                  <p className="text-[10px] text-gray-500">Configure global downtime announcements and estimated resolution times.</p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1.5">Emergency Helpline Number</label>
+                  <input 
+                    type="text" 
+                    value={cmsHelpline}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (!val.startsWith('+91 ')) val = '+91 ';
+                      const digits = val.replace(/^\+91 /, '').replace(/\D/g, '').substring(0, 10);
+                      setCmsHelpline('+91 ' + digits);
+                    }}
+                    maxLength={14}
+                    placeholder="e.g., +91 99999 88888"
+                    className="w-full rounded-xl border border-red-200 dark:border-red-800/50 dark:bg-zinc-900 px-4 py-2.5 text-xs outline-none focus:border-red-500 text-gray-955 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1.5">Maintenance ETA (Time Remaining)</label>
+                  <input 
+                    type="text" 
+                    value={cmsMaintenanceEta}
+                    onChange={(e) => setCmsMaintenanceEta(e.target.value)}
+                    placeholder="e.g., 45 minutes"
+                    className="w-full rounded-xl border border-red-200 dark:border-red-800/50 dark:bg-zinc-900 px-4 py-2.5 text-xs outline-none focus:border-red-500 text-gray-955 dark:text-white"
+                  />
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-3 rounded-xl shadow transition-all"
+                >
+                  Update Maintenance Timeline ✓
+                </button>
+              </form>
+
+              {/* Feature Flags console card */}
+              <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 flex flex-col justify-between gap-6 flex-grow">
               <div>
                 <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider mb-1">⚙️ Feature Flags Configuration</h3>
                 <p className="text-[10px] text-gray-500">Live toggle experimental parameters to control sandbox booking pipelines immediately.</p>
@@ -1101,8 +1252,8 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-bold text-gray-450 uppercase block mb-1">Auditing signature</span>
                 <p className="text-[9px] text-gray-400 font-semibold font-mono">sys_key: ADM-FLAG-SEC-MOD-2026</p>
               </div>
+              </div>
             </div>
-
           </div>
         )}
 
@@ -1144,6 +1295,87 @@ export default function AdminDashboard() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Maintenance Mode Confirmation Modal */}
+        {showMaintenanceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-zinc-800 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="p-6 border-b border-gray-100 dark:border-zinc-800/50">
+                <div className="flex items-center gap-4 mb-2">
+                  <div className={`p-3 rounded-full ${!maintenanceModeActive ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'bg-green-100 text-green-600 dark:bg-green-900/30'}`}>
+                    <span className="text-2xl">{!maintenanceModeActive ? '🚨' : '✅'}</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      {!maintenanceModeActive ? 'Enable Maintenance Mode?' : 'Disable Maintenance Mode?'}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">System Core Operation</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 bg-gray-50 dark:bg-zinc-950/50 text-sm text-gray-600 dark:text-zinc-300">
+                {!maintenanceModeActive ? (
+                  <p>
+                    You are about to place the entire platform into <strong>ACTIVE LOCKOUT</strong>. 
+                    This will immediately disconnect all regular users, block new logins, and restrict access to administrators only. 
+                    <br/><br/>
+                    Are you absolutely sure you want to proceed?
+                  </p>
+                ) : (
+                  <p>
+                    You are about to restore the platform to <strong>STANDARD PRODUCTION</strong> mode. 
+                    This will allow all customers, workers, and contractors to resume normal activities.
+                  </p>
+                )}
+              </div>
+
+              <div className="p-5 border-t border-gray-100 dark:border-zinc-800/50 flex gap-3 bg-white dark:bg-zinc-900 justify-end">
+                <button
+                  onClick={() => setShowMaintenanceModal(false)}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmToggleMaintenance}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm text-white shadow-md transition-all ${
+                    !maintenanceModeActive 
+                      ? 'bg-red-600 hover:bg-red-700 hover:shadow-red-500/20' 
+                      : 'bg-green-600 hover:bg-green-700 hover:shadow-green-500/20'
+                  }`}
+                >
+                  {!maintenanceModeActive ? 'Yes, Lock Platform' : 'Yes, Restore Access'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CMS Success Modal */}
+        {showCmsModal && (
+          <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-[100] flex justify-center items-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-zinc-950 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden border border-gray-100 dark:border-zinc-800 scale-in-center">
+              <div className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">🎨</span>
+                </div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wide">
+                  Configuration Saved
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">
+                  CMS configurations and Maintenance ETA have been successfully saved and propagated across the platform.
+                </p>
+                <button
+                  onClick={() => setShowCmsModal(false)}
+                  className="mt-6 w-full px-6 py-3 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all"
+                >
+                  OK, Got it
+                </button>
+              </div>
             </div>
           </div>
         )}

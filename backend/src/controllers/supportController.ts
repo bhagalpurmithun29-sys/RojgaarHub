@@ -179,3 +179,27 @@ export const updateDisputeStatus = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get all dispute tickets
+// @route   GET /api/support/disputes
+// @access  Private (Admin Only)
+export const getDisputes = async (req: AuthRequest, res: Response) => {
+  try {
+    const disputes = await Dispute.find({}).sort({ createdAt: -1 }).populate('reporterId', 'name email');
+    res.json(disputes);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get active SOS signals
+// @route   GET /api/support/sos
+// @access  Private (Admin Only)
+export const getSOS = async (req: AuthRequest, res: Response) => {
+  try {
+    const sosLogs = await SOSLog.find({ status: 'active' }).sort({ createdAt: -1 }).populate('userId', 'name email');
+    res.json(sosLogs);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
