@@ -565,10 +565,10 @@ export default function AdminDashboard() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-zinc-950/50 admin-bg-image backdrop-blur-md flex flex-col items-center justify-center p-6">
         <div className="text-center space-y-4">
           <div className="h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider">Verifying Admin Access</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-wider">Verifying Admin Access</h2>
           <p className="text-xs text-gray-500 dark:text-zinc-400">Loading secure admin environment credentials...</p>
         </div>
       </div>
@@ -576,15 +576,16 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-4 sm:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-zinc-50 dark:bg-brand-navy admin-bg-image p-4 sm:p-6 transition-colors duration-500 relative">
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 dark:opacity-[0.05] pointer-events-none"></div>
       {/* Main Container */}
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Navigation Head */}
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-md border border-gray-150 dark:border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/40 dark:border-zinc-800/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wide">Enterprise Ops Console</h1>
+              <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wide">Enterprise Ops Console</h1>
             </div>
             <p className="text-[10px] text-gray-500 mt-0.5">Global platform administration metrics, user approvals, finance audits, feature flags, and CMS widgets.</p>
           </div>
@@ -638,7 +639,7 @@ export default function AdminDashboard() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`text-xs font-bold px-4 py-2.5 rounded-xl whitespace-nowrap transition-all ${
                 activeTab === tab.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30'
                   : 'text-gray-650 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-white'
               }`}
             >
@@ -661,9 +662,9 @@ export default function AdminDashboard() {
                 { title: 'Pending Support Tickets', value: tickets.filter(t => t.status === 'Open').length.toString(), sub: 'Dispute queue', positive: tickets.filter(t => t.status === 'Open').length === 0 },
                 { title: 'Est Revenue Commissions', value: `₹${stats.platformRevenue}`, sub: '15% platform cut', positive: true }
               ].map((stat, idx) => (
-                <div key={idx} className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-sm border border-gray-150 dark:border-zinc-800">
+                <div key={idx} className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/40 dark:border-zinc-800/80 relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{stat.title}</p>
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white font-mono mt-2">{stat.value}</h3>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-2">{stat.value}</h3>
                   <span className={`text-[9px] font-bold block mt-1 ${stat.positive ? 'text-green-600' : 'text-amber-600 animate-pulse'}`}>
                     {stat.sub}
                   </span>
@@ -675,9 +676,9 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Daily Signups Chart — live from DB */}
-              <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-md border border-gray-150 dark:border-zinc-800 space-y-4">
+              <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/40 dark:border-zinc-800/80 space-y-4">
                 <div className="flex justify-between items-center border-b border-gray-100 dark:border-zinc-850 pb-4">
-                  <h4 className="font-bold text-xs text-gray-900 dark:text-white uppercase tracking-wider">🚀 Weekly Platform Signups Metric</h4>
+                  <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">🚀 Weekly Platform Signups Metric</h4>
                   <span className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded">Live from MongoDB</span>
                 </div>
                 
@@ -715,9 +716,9 @@ export default function AdminDashboard() {
               </div>
 
               {/* Booking Category Splits — live from DB */}
-              <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-md border border-gray-150 dark:border-zinc-800 space-y-4">
+              <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/40 dark:border-zinc-800/80 space-y-4">
                 <div className="flex justify-between items-center border-b border-gray-100 dark:border-zinc-850 pb-4">
-                  <h4 className="font-bold text-xs text-gray-900 dark:text-white uppercase tracking-wider">📊 Completed Bookings Category Splits</h4>
+                  <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">📊 Completed Bookings Category Splits</h4>
                   <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">Live from MongoDB</span>
                 </div>
 
@@ -759,15 +760,15 @@ export default function AdminDashboard() {
         {/* VIEW 2: USERS & CONTRACTORS LIST */}
         {/* ======================================================== */}
         {activeTab === 'users' && (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-md border border-gray-150 dark:border-zinc-800 overflow-hidden">
+          <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 dark:border-zinc-800/80 overflow-hidden">
             <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-950/20">
-              <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wide">👥 Platform User & Contractor Management Registry</h3>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wide">👥 Platform User & Contractor Management Registry</h3>
               <p className="text-[10px] text-gray-400 font-semibold">Block customers or assign contractor roles.</p>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-zinc-950 text-gray-700 dark:text-zinc-300 font-bold border-b border-gray-200 dark:border-zinc-805">
+                <thead className="bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-md text-gray-700 dark:text-zinc-300 font-bold border-b border-gray-200 dark:border-zinc-805">
                   <tr>
                     <th className="px-6 py-4">User ID</th>
                     <th className="px-6 py-4">Full Name</th>
@@ -781,7 +782,7 @@ export default function AdminDashboard() {
                   {users.map(u => (
                     <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-zinc-850/50">
                       <td className="px-6 py-4 font-mono font-bold">{u.id}</td>
-                      <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{u.name}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{u.name}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
                           u.role === 'contractor' ? 'bg-amber-100 text-amber-700' :
@@ -832,9 +833,9 @@ export default function AdminDashboard() {
         {/* VIEW 3: LABOUR KYC APPROVALS */}
         {/* ======================================================== */}
         {activeTab === 'approvals' && (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-md border border-gray-150 dark:border-zinc-800 overflow-hidden">
+          <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 dark:border-zinc-800/80 overflow-hidden">
             <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-950/20">
-              <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wide">🥇 Pending Labour Profile Verification Approvals</h3>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wide">🥇 Pending Labour Profile Verification Approvals</h3>
               <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded">
                 KYC Audit Deck
               </span>
@@ -842,7 +843,7 @@ export default function AdminDashboard() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-zinc-950 text-gray-700 dark:text-zinc-300 font-bold border-b border-gray-200 dark:border-zinc-805">
+                <thead className="bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-md text-gray-700 dark:text-zinc-300 font-bold border-b border-gray-200 dark:border-zinc-805">
                   <tr>
                     <th className="px-6 py-4">Labour ID</th>
                     <th className="px-6 py-4">Worker Name</th>
@@ -862,7 +863,7 @@ export default function AdminDashboard() {
                     users.filter(u => u.status === 'Pending KYC').map(u => (
                       <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-zinc-850/50">
                         <td className="px-6 py-4 font-mono font-bold">{u.id}</td>
-                        <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{u.name}</td>
+                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{u.name}</td>
                         <td className="px-6 py-4 text-amber-600 font-bold">
                           <div className="flex gap-2">
                             {(u as any).aadhaarCard ? (
@@ -904,8 +905,8 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             
             {/* Split breakdown — live from DB */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-gray-150 dark:border-zinc-800 shadow-md">
-              <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider mb-2">💰 Commission Billing Splits</h3>
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-6 border border-gray-150 dark:border-zinc-800 shadow-md">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider mb-2">💰 Commission Billing Splits</h3>
               <p className="text-xs text-gray-500 mb-6">Audits the exact splits on booking commissions pulled from live MongoDB payment records. (Platform fee + GST 18%, Labour deduction 15%).</p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
@@ -925,15 +926,15 @@ export default function AdminDashboard() {
             </div>
 
             {/* Transactions Ledger */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-md border border-gray-150 dark:border-zinc-800 overflow-hidden">
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 dark:border-zinc-800/80 overflow-hidden">
               <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-950/20">
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wide">💳 Live Payments Transaction Ledger</h3>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wide">💳 Live Payments Transaction Ledger</h3>
                 <span className="text-xs font-mono text-gray-450">UPI & Wallet</span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 dark:bg-zinc-950 text-gray-700 dark:text-zinc-300 font-bold border-b border-gray-200 dark:border-zinc-805">
+                  <thead className="bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-md text-gray-700 dark:text-zinc-300 font-bold border-b border-gray-200 dark:border-zinc-805">
                     <tr>
                       <th className="px-6 py-4">Transaction ID</th>
                       <th className="px-6 py-4">Customer Name</th>
@@ -956,7 +957,7 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4 font-mono font-bold">{tx.id}</td>
                         <td className="px-6 py-4 font-semibold text-gray-905 dark:text-white">{tx.customer}</td>
                         <td className="px-6 py-4">{tx.provider}</td>
-                        <td className="px-6 py-4 font-mono font-bold text-gray-900 dark:text-white">₹{tx.amount.toLocaleString('en-IN')}</td>
+                        <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white">₹{tx.amount.toLocaleString('en-IN')}</td>
                         <td className="px-6 py-4 font-mono">₹{tx.fee}</td>
                         <td className="px-6 py-4 font-mono text-red-500">- ₹{tx.commission}</td>
                         <td className="px-6 py-4">
@@ -984,9 +985,9 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             
             {/* SOS Active Alerts deck */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl border border-gray-150 dark:border-zinc-800 overflow-hidden">
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-xl border border-gray-150 dark:border-zinc-800 overflow-hidden">
               <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-red-50/10 dark:bg-red-955/10">
-                <h2 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-red-500 animate-ping"></span>
                   <span>🚨 Active Security SOS Emergency Signals</span>
                 </h2>
@@ -1012,9 +1013,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* AI Security Flags block */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl border border-gray-150 dark:border-zinc-800 overflow-hidden">
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-xl border border-gray-150 dark:border-zinc-800 overflow-hidden">
               <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-emerald-50/10 dark:bg-emerald-955/10">
-                <h2 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
                   <span>🛡️ Flagged Fraud & Suspicious Booking Patterns</span>
                 </h2>
@@ -1025,7 +1026,7 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-2xl border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="text-xs space-y-1.5">
-                      <p className="font-bold text-gray-900 dark:text-white">{securityAlert.email} [Score: {securityAlert.score}/100]</p>
+                      <p className="font-bold text-slate-900 dark:text-white">{securityAlert.email} [Score: {securityAlert.score}/100]</p>
                       <div className="flex flex-wrap gap-1">
                         {securityAlert.flags.map((f, i) => (
                           <span key={i} className="bg-red-50 border border-red-200 text-red-700 text-[8px] font-bold px-2 py-0.5 rounded">
@@ -1055,9 +1056,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* Disputes complaints list table */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl border border-gray-150 dark:border-zinc-800 overflow-hidden">
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-xl border border-gray-150 dark:border-zinc-800 overflow-hidden">
               <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wide">🎫 Active Support Disputes Complaints & Refunds Queue</h3>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wide">🎫 Active Support Disputes Complaints & Refunds Queue</h3>
               </div>
 
               <div className="overflow-x-auto">
@@ -1083,7 +1084,7 @@ export default function AdminDashboard() {
                       tickets.map(tkt => (
                         <tr key={tkt.id} className="hover:bg-gray-50 dark:hover:bg-zinc-850/50">
                           <td className="px-6 py-4 font-mono font-bold text-indigo-650">{tkt.id}</td>
-                          <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{tkt.category}</td>
+                          <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{tkt.category}</td>
                           <td className="px-6 py-4 text-gray-400 max-w-sm truncate">{tkt.title} - {tkt.description}</td>
                           <td className="px-6 py-4">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
@@ -1138,9 +1139,9 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* Content Management System (CMS) form */}
-            <form onSubmit={handleSaveCMS} className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 space-y-6">
+            <form onSubmit={handleSaveCMS} className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 space-y-6">
               <div>
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider mb-1">🎨 dynamic Content Management System (CMS)</h3>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider mb-1">🎨 dynamic Content Management System (CMS)</h3>
                 <p className="text-[10px] text-gray-500">Edit branding messages and promotional slogans live across user views immediately.</p>
               </div>
 
@@ -1219,9 +1220,9 @@ export default function AdminDashboard() {
               </form>
 
               {/* Feature Flags console card */}
-              <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 flex flex-col justify-between gap-6 flex-grow">
+              <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 flex flex-col justify-between gap-6 flex-grow">
               <div>
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider mb-1">⚙️ Feature Flags Configuration</h3>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider mb-1">⚙️ Feature Flags Configuration</h3>
                 <p className="text-[10px] text-gray-500">Live toggle experimental parameters to control sandbox booking pipelines immediately.</p>
               </div>
 
@@ -1232,7 +1233,7 @@ export default function AdminDashboard() {
                   { id: 'graceCancel', label: '❌ 30-Minute Grace Window rule throttling', flag: featureFlags.graceCancel },
                   { id: 'aiSecurityScan', label: '🛡️ AI spam sentiment scanner triggers', flag: featureFlags.aiSecurityScan }
                 ].map((item) => (
-                  <div key={item.id} className="flex justify-between items-center text-xs p-3.5 bg-gray-50 dark:bg-zinc-950/50 rounded-xl border border-gray-100">
+                  <div key={item.id} className="flex justify-between items-center text-xs p-3.5 bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-md/50 rounded-xl border border-gray-100">
                     <span className="font-semibold">{item.label}</span>
                     <button
                       onClick={() => handleToggleFlag(item.id as any)}
@@ -1261,10 +1262,10 @@ export default function AdminDashboard() {
         {/* VIEW 7: SYSTEM AUDIT LOGS CONSOLE */}
         {/* ======================================================== */}
         {activeTab === 'audits' && (
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 space-y-4">
+          <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-gray-150 dark:border-zinc-800 space-y-4">
             <div className="border-b border-gray-100 dark:border-zinc-850 pb-4 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider">📜 Platform System Audit Logs Console</h3>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider">📜 Platform System Audit Logs Console</h3>
                 <p className="text-[10px] text-gray-500">Chronological logging ledger of administrative decisions, security overrides, and CMS edits.</p>
               </div>
               <button 
@@ -1302,14 +1303,14 @@ export default function AdminDashboard() {
         {/* Maintenance Mode Confirmation Modal */}
         {showMaintenanceModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-zinc-800 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 dark:border-zinc-800 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
               <div className="p-6 border-b border-gray-100 dark:border-zinc-800/50">
                 <div className="flex items-center gap-4 mb-2">
                   <div className={`p-3 rounded-full ${!maintenanceModeActive ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'bg-green-100 text-green-600 dark:bg-green-900/30'}`}>
                     <span className="text-2xl">{!maintenanceModeActive ? '🚨' : '✅'}</span>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">
                       {!maintenanceModeActive ? 'Enable Maintenance Mode?' : 'Disable Maintenance Mode?'}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">System Core Operation</p>
@@ -1317,7 +1318,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="p-6 bg-gray-50 dark:bg-zinc-950/50 text-sm text-gray-600 dark:text-zinc-300">
+              <div className="p-6 bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-md/50 text-sm text-gray-600 dark:text-zinc-300">
                 {!maintenanceModeActive ? (
                   <p>
                     You are about to place the entire platform into <strong>ACTIVE LOCKOUT</strong>. 
@@ -1333,7 +1334,7 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              <div className="p-5 border-t border-gray-100 dark:border-zinc-800/50 flex gap-3 bg-white dark:bg-zinc-900 justify-end">
+              <div className="p-5 border-t border-gray-100 dark:border-zinc-800/50 flex gap-3 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl justify-end">
                 <button
                   onClick={() => setShowMaintenanceModal(false)}
                   className="px-6 py-2.5 rounded-xl font-bold text-sm bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
@@ -1363,7 +1364,7 @@ export default function AdminDashboard() {
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-3xl">🎨</span>
                 </div>
-                <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wide">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wide">
                   Configuration Saved
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-zinc-400">

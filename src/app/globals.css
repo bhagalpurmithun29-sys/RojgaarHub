@@ -94,6 +94,7 @@
   --brand-amber: #f59e0b;
   --brand-orange: #f97316;
   --brand-bg: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.65)), url("/theme1.png");
+  --admin-bg: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.7)), url("/admin-bg.png");
 }
 
 .dark {
@@ -135,6 +136,7 @@
   --brand-amber: #f59e0b;
   --brand-orange: #f97316;
   --brand-bg: linear-gradient(to bottom, rgba(6, 19, 37, 0.75), rgba(6, 19, 37, 0.85)), url("/theme1.png");
+  --admin-bg: linear-gradient(to bottom, rgba(6, 19, 37, 0.5), rgba(6, 19, 37, 0.75)), url("/admin-bg.png");
 }
 
 @layer base {
@@ -151,6 +153,13 @@
 
 .brand-bg-image {
   background-image: var(--brand-bg) !important;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.admin-bg-image {
+  background-image: var(--admin-bg) !important;
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
