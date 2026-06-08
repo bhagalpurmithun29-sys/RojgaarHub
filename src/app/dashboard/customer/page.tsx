@@ -37,6 +37,18 @@ export default function CustomerDashboard() {
   const [openKYCFromWelcome, setOpenKYCFromWelcome] = useState(false);
 
   useEffect(() => {
+    // Listen for custom tab change events from child components
+    const handleTabChange = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setActiveTab(customEvent.detail);
+      }
+    };
+    window.addEventListener('changeTab', handleTabChange);
+    return () => window.removeEventListener('changeTab', handleTabChange);
+  }, []);
+
+  useEffect(() => {
     // Initial fallback
     const emailName = localStorage.getItem('user_email')?.split('@')[0] || 'Customer';
     setUserName(emailName);

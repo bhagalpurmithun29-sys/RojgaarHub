@@ -542,7 +542,13 @@ export default function BookingHistory({ initialRole = 'customer' }: { initialRo
                               <Phone className="w-4 h-4" /> Call
                             </button>
                             {b.tracking && isActive ? (
-                              <button className="col-span-2 flex items-center justify-center gap-2 bg-brand-amber hover:bg-brand-orange text-white p-3.5 rounded-xl font-bold text-sm transition-colors shadow-lg">
+                              <button 
+                                onClick={() => {
+                                  // Dispatch a custom event to tell the dashboard to switch tabs
+                                  window.dispatchEvent(new CustomEvent('changeTab', { detail: 'live' }));
+                                }}
+                                className="col-span-2 flex items-center justify-center gap-2 bg-brand-amber hover:bg-brand-orange text-white p-3.5 rounded-xl font-bold text-sm transition-colors shadow-lg"
+                              >
                                 <Map className="w-4 h-4" /> Track Live on Map
                               </button>
                             ) : null}
