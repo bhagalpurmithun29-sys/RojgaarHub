@@ -202,6 +202,15 @@ export const requestWithdraw = async (req: AuthRequest, res: Response) => {
       requestedAt: new Date(),
     });
 
+    // Add transaction record for frontend history
+    wallet.transactions.push({
+      amount: amount,
+      type: 'debit',
+      description: `Withdrawal request to ${bankAccountDetails}`,
+      referenceId: `wd_${Date.now()}`,
+      date: new Date(),
+    });
+
     await wallet.save();
 
     res.json({
