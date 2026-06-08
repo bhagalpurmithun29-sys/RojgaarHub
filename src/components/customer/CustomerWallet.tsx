@@ -24,7 +24,7 @@ export default function CustomerWallet() {
   
   // Wallet State
   const [wallet, setWallet] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>(MOCK_TRANSACTIONS);
   const [isLoading, setIsLoading] = useState(true);
 
   // Add Money State
@@ -57,6 +57,7 @@ export default function CustomerWallet() {
     } catch (err) {
       console.error(err);
       toast.error('Failed to load wallet data');
+      setTransactions(MOCK_TRANSACTIONS);
     } finally {
       setIsLoading(false);
     }

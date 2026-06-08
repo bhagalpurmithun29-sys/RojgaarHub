@@ -159,6 +159,46 @@ export default function SearchPage() {
     }
   ];
 
+  const [profiles, setProfiles] = useState<WorkerProfile[]>(dummyProfiles);
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/profiles/search?isWorker=true`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const mappedProfiles = data.map((p: any) => ({
+              id: p._id,
+              name: p.user?.name || p.name || 'Unknown',
+              category: p.skills?.[0] || 'General',
+              experienceYears: p.experienceYears || 0,
+              rating: p.rating || 4.0,
+              priceValue: p.hourlyRate || 300,
+              distanceKm: p.distance || 5.0,
+              availability: p.availabilityStatus || 'available',
+              languages: p.languages || ['Hindi'],
+              verified: p.isVerified || false,
+              badges: p.badges || [],
+              responseTimeMin: p.responseTimeMin || 30,
+              reliabilityScore: p.reliabilityScore || 90,
+              jobsCompleted: p.jobsCompleted || 0,
+              cancellationRate: p.cancellationRate || 0
+            }));
+            setProfiles(mappedProfiles);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch live profiles. Using dummy fallback.', err);
+      }
+    };
+    fetchProfiles();
+  }, []);
+
   // Natural Language & Hindi Voice search intent parser
   const handleVoiceSearchSimulation = () => {
     setIsListening(true);
@@ -235,7 +275,7 @@ export default function SearchPage() {
   };
 
   // Filtering & Sorting execution
-  const processedProfiles = dummyProfiles
+  const processedProfiles = profiles
     .filter(profile => {
       // 1. Text Search matching
       const matchesSearch = profile.name.toLowerCase().includes(searchQuery.toLowerCase()) || 

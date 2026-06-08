@@ -6,6 +6,7 @@ import {
   MessageSquare, Phone, CheckCircle2, XCircle, FileText,
   Search, Filter, ChevronRight, UserCircle2, Briefcase, Zap, Star
 } from 'lucide-react';
+import api from '@/utils/api';
 
 interface PostRequirementProps {
   kycStatus?: string;
@@ -81,6 +82,39 @@ export default function PostRequirement({ kycStatus, setShowBookingKYC }: PostRe
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [priority, setPriority] = useState('Normal');
+
+  const [requirements, setRequirements] = useState(MOCK_REQUIREMENTS);
+  const [applications, setApplications] = useState(MOCK_APPLICATIONS);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const resReq = await api.get('/projects'); // Adjust endpoint if needed
+        if (resReq.data && resReq.data.length > 0) {
+          const mappedReqs = resReq.data.map((r: any) => ({
+            id: r._id,
+            title: r.title,
+            category: r.category || 'General',
+            description: r.description,
+            labourRequired: r.labourRequired || 1,
+            bookingType: r.bookingType || 'Hourly',
+            duration: r.duration || '1 day',
+            minBudget: r.minBudget || 500,
+            maxBudget: r.budget || 1000,
+            startDate: new Date(r.createdAt).toLocaleDateString(),
+            location: r.location?.address || 'India',
+            priority: r.priority || 'Normal',
+            status: r.status === 'pending' ? 'Open' : r.status,
+            applications: r.applicationsCount || 0
+          }));
+          setRequirements(mappedReqs);
+        }
+      } catch (err) {
+        console.error('Failed to load live requirements. Using mock.', err);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handlePostSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,7 +286,7 @@ export default function PostRequirement({ kycStatus, setShowBookingKYC }: PostRe
         <div className="space-y-6">
           {!selectedReq ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {MOCK_REQUIREMENTS.map(req => (
+              {requirements.map(req => (
                 <div key={req.id} className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-150 dark:border-zinc-800 shadow-sm cursor-pointer hover:border-brand-amber/30 transition-all group" onClick={() => setSelectedReq(req)}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -290,7 +324,7 @@ export default function PostRequirement({ kycStatus, setShowBookingKYC }: PostRe
               <div className="p-6">
                 <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Applications Received ({selectedReq.applications})</h4>
                 <div className="space-y-4">
-                  {MOCK_APPLICATIONS.map(app => (
+                  {applications.map(app => (
                     <div key={app.id} className="border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col md:flex-row gap-6">
                       <div className="flex-1">
                         <div className="flex justify-between items-start mb-2">
@@ -341,7 +375,7 @@ export default function PostRequirement({ kycStatus, setShowBookingKYC }: PostRe
 
             {!isApplying ? (
               <div className="grid grid-cols-1 gap-6">
-                {MOCK_REQUIREMENTS.map(req => (
+                {requirements.map(req => (
                   <div key={req.id} className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-150 dark:border-zinc-800 shadow-sm overflow-hidden group">
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-2">

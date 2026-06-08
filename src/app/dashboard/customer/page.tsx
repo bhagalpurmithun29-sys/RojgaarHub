@@ -131,8 +131,8 @@ export default function CustomerDashboard() {
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#121212] overflow-hidden font-sans">
 
-      {/* Sidebar */}
-      <aside className="w-72 bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 flex flex-col shadow-sm z-10 custom-scrollbar overflow-y-auto">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-72 bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 flex-col shadow-sm z-10 custom-scrollbar overflow-y-auto">
         <div className="p-6 sticky top-0 bg-white dark:bg-zinc-950 z-20 border-b border-gray-100 dark:border-zinc-800">
           <Link href="/" className="flex items-center gap-2">
             <Briefcase className="h-8 w-8 text-brand-amber" />
@@ -262,6 +262,32 @@ export default function CustomerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-t border-gray-200 dark:border-zinc-800 z-50 pb-safe">
+        <div className="flex items-center justify-around p-3">
+          {[
+            { id: 'home', icon: Home, label: 'Home' },
+            { id: 'search', icon: Search, label: 'Search' },
+            { id: 'history', icon: History, label: 'Bookings' },
+            { id: 'wallet', icon: Wallet, label: 'Wallet' },
+            { id: 'settings', icon: Settings, label: 'Settings' }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex flex-col items-center gap-1 ${isActive ? 'text-brand-amber' : 'text-gray-500 dark:text-zinc-400'}`}
+              >
+                <Icon className={`w-6 h-6 ${isActive ? 'fill-brand-amber/20' : ''}`} />
+                <span className="text-[10px] font-bold">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
     </div>
   );

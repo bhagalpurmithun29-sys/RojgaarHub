@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 interface UserRecord {
   id: string;
@@ -315,9 +316,9 @@ export default function AdminDashboard() {
         throw new Error('Failed to update block status in MongoDB');
       }
       await fetchData();
-      alert(`Success! User status set to: ${currentStatus === 'Blocked' ? 'Active' : 'Blocked'}.`);
+      toast.success(`User status set to: ${currentStatus === 'Blocked' ? 'Active' : 'Blocked'}.`);
     } catch (err: any) {
-      alert(err.message || 'An error occurred while updating block status');
+      toast.error(err.message || 'An error occurred while updating block status');
     }
   };
 
@@ -342,9 +343,9 @@ export default function AdminDashboard() {
         throw new Error('Failed to approve KYC in MongoDB');
       }
       await fetchData();
-      alert(`Success! Labour profile ${name} approved for standard matching dispatch operations.`);
+      toast.success(`Labour profile ${name} approved for standard matching dispatch operations.`);
     } catch (err: any) {
-      alert(err.message || 'An error occurred while approving profile');
+      toast.error(err.message || 'An error occurred while approving profile');
     }
   };
 
@@ -368,19 +369,18 @@ export default function AdminDashboard() {
         throw new Error('Failed to reject KYC in MongoDB');
       }
       await fetchData();
-      alert(`Rejected. Labour request status updated to Rejected.`);
+      toast.success(`Labour request status updated to Rejected.`);
     } catch (err: any) {
-      alert(err.message || 'An error occurred while rejecting profile');
+      toast.error(err.message || 'An error occurred while rejecting profile');
     }
   };
 
 
-  // Contractor Management Actions
   const handleToggleContractorRole = (userId: string, name: string) => {
     const updated = users.map(u => u.id === userId ? { ...u, role: 'labour' as const } : u);
     setUsers(updated);
     addAuditLog(`Admin reassigned Contractor ${name} to standard Labour profile.`, 'User');
-    alert(`Role updated to Labour.`);
+    toast.success(`Role updated to Labour.`);
   };
 
   // Dispatch / Close active SOS alert
@@ -398,9 +398,9 @@ export default function AdminDashboard() {
       
       setSosAlert(null);
       addAuditLog('Admin resolved active SOS emergency call, silences dispatch sirens.', 'Security');
-      alert('🚨 Emergency SOS successfully resolved!');
+      toast.success('Emergency SOS successfully resolved!');
     } catch (e) {
-      alert('Failed to resolve SOS');
+      toast.error('Failed to resolve SOS');
     }
   };
 
@@ -418,9 +418,9 @@ export default function AdminDashboard() {
       
       setSecurityAlert(null);
       addAuditLog('Admin cleared suspicious AI flags & approved profile Trust to 100/100.', 'Security');
-      alert('🛡️ AI Security Override executed successfully!');
+      toast.success('AI Security Override executed successfully!');
     } catch (e) {
-      alert('Failed to clear security alert');
+      toast.error('Failed to clear security alert');
     }
   };
 
@@ -436,9 +436,9 @@ export default function AdminDashboard() {
         
         setSecurityAlert(prev => prev ? { ...prev, risk: 'ELEVATED', score: 40, flags: [...prev.flags, 'Manual Admin Verification Hold'] } : null);
         addAuditLog(`Admin enforced manual KYC restriction hold on flagged profile [${securityAlert.email}].`, 'Security');
-        alert('⚠️ Verification Enforcement triggered!');
+        toast.error('Verification Enforcement triggered!');
       } catch (e) {
-        alert('Failed to enforce security check');
+        toast.error('Failed to enforce security check');
       }
     }
   };
@@ -459,9 +459,9 @@ export default function AdminDashboard() {
       localStorage.setItem('rozgaar_wallet_balance', nextBalance.toString());
 
       addAuditLog(`Admin approved wallet refund of ₹150 for Dispute Ticket: ${ticketId}.`, 'Finance');
-      alert(`💳 DISPUTE RESOLVED! ₹150 credited to customer wallet. New Balance: ₹${nextBalance}`);
+      toast.success(`DISPUTE RESOLVED! ₹150 credited to customer wallet. New Balance: ₹${nextBalance}`);
     } catch (e) {
-      alert('Error updating dispute');
+      toast.error('Error updating dispute');
     }
   };
 
@@ -472,9 +472,9 @@ export default function AdminDashboard() {
       setTickets(updatedTickets);
       
       addAuditLog(`Admin dismissed Complaint Ticket: ${ticketId} without wallet credit modifications.`, 'Finance');
-      alert(`Dispute Ticket ${ticketId} resolved without payout.`);
+      toast.success(`Dispute Ticket ${ticketId} resolved without payout.`);
     } catch (e) {
-      alert('Error updating dispute');
+      toast.error('Error updating dispute');
     }
   };
 
@@ -495,8 +495,9 @@ export default function AdminDashboard() {
       await Promise.all(reqs);
       addAuditLog(`Admin updated CMS static content configurations.`, 'CMS');
       setShowCmsModal(true);
+      toast.success('CMS configurations updated successfully');
     } catch (err: any) {
-      alert('Error saving CMS configurations.');
+      toast.error('Error saving CMS configurations.');
     }
   };
 
@@ -515,8 +516,9 @@ export default function AdminDashboard() {
       await Promise.all(reqs);
       addAuditLog(`Admin updated Maintenance ETA Configuration.`, 'Security');
       setShowCmsModal(true);
+      toast.success('Maintenance ETA configuration saved');
     } catch (err: any) {
-      alert('Error saving Maintenance ETA configuration.');
+      toast.error('Error saving Maintenance ETA configuration.');
     }
   };
 
@@ -533,8 +535,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ flagName, value: nextState })
       });
       addAuditLog(`Admin toggled Feature Flag [${flagName}] to ${nextState ? 'ON' : 'OFF'}.`, 'System');
+      toast.success(`Feature Flag [${flagName}] toggled successfully`);
     } catch (err: any) {
-      alert('Failed to save feature flag');
+      toast.error('Failed to save feature flag');
       setFeatureFlags(prev => ({ ...prev, [flagName]: !nextState }));
     }
   };
@@ -557,8 +560,9 @@ export default function AdminDashboard() {
       setMaintenanceModeActive(nextState);
       addAuditLog(`Admin toggled Global Platform Maintenance Mode to ${nextState ? 'ACTIVE' : 'INACTIVE'}.`, 'System');
       setShowMaintenanceModal(false);
+      toast.success(`Maintenance Mode is now ${nextState ? 'ACTIVE' : 'INACTIVE'}`);
     } catch (err: any) {
-      alert('Failed to toggle maintenance mode on server.');
+      toast.error('Failed to toggle maintenance mode on server.');
       setShowMaintenanceModal(false);
     }
   };

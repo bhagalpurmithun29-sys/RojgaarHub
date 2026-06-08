@@ -88,7 +88,7 @@ export default function LabourDashboard() {
     <div className="h-screen flex bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-72 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col z-20 shrink-0 shadow-sm relative">
+      <aside className="hidden md:flex w-72 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex-col z-20 shrink-0 shadow-sm relative">
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-amber rounded-xl flex items-center justify-center shadow-lg shadow-brand-amber/30">
@@ -198,6 +198,32 @@ export default function LabourDashboard() {
           { activeTab === 'kyc' && <DocumentVerification /> }
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-t border-gray-200 dark:border-zinc-800 z-50 pb-safe">
+        <div className="flex items-center justify-around p-3">
+          {[
+            { id: 'home', icon: Home, label: 'Home' },
+            { id: 'requests', icon: Bell, label: 'Requests' },
+            { id: 'active', icon: MapPin, label: 'Active' },
+            { id: 'wallet', icon: Wallet, label: 'Wallet' },
+            { id: 'settings', icon: Settings, label: 'Settings' }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex flex-col items-center gap-1 ${isActive ? 'text-brand-amber' : 'text-gray-500 dark:text-zinc-400'}`}
+              >
+                <Icon className={`w-6 h-6 ${isActive ? 'fill-brand-amber/20' : ''}`} />
+                <span className="text-[10px] font-bold">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
     </div>
   );

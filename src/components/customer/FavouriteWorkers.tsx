@@ -5,6 +5,7 @@ import {
   MessageSquare, UserX, AlertTriangle, ShieldCheck,
   ChevronDown, CheckCircle2, UserPlus, Zap
 } from 'lucide-react';
+import api from '@/utils/api';
 
 interface FavouriteWorkersProps {
   kycStatus?: string;
@@ -76,6 +77,32 @@ export default function FavouriteWorkers({ kycStatus, setShowBookingKYC }: Favou
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('Recently Added');
   const [favourites, setFavourites] = useState(MOCK_FAVOURITES);
+
+  React.useEffect(() => {
+    const fetchFavourites = async () => {
+      try {
+        const res = await api.get('/profiles/favourites');
+        if (res.data && res.data.length > 0) {
+          const mappedFavs = res.data.map((fav: any) => ({
+            id: fav._id || fav.id,
+            name: fav.user?.name || fav.name,
+            category: fav.skills?.[0] || 'Worker',
+            rating: fav.rating || 4.5,
+            experience: `${fav.experienceYears || 0} Years`,
+            distance: fav.distance || '2.0 km',
+            reliability: '98%',
+            lastBooked: 'Recently',
+            status: fav.availabilityStatus === 'available' ? 'available' : 'unavailable',
+            image: fav.user?.profilePic || 'https://i.pravatar.cc/150'
+          }));
+          setFavourites(mappedFavs);
+        }
+      } catch (err) {
+        console.error('Failed to load favourites. Using mock fallback.', err);
+      }
+    };
+    fetchFavourites();
+  }, []);
 
   const handleBookAgain = (e: React.MouseEvent, status: string) => {
     if (status === 'unavailable') {

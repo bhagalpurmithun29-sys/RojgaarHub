@@ -97,10 +97,67 @@ const MOCK_PROJECTS = [
     ]
   }
 ];
+import api from '@/utils/api';
+import toast from 'react-hot-toast';
 
 export default function ProjectHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(MOCK_PROJECTS[0].id);
+
+  const [stats, setStats] = useState(MOCK_STATS);
+  const [projects, setProjects] = useState(MOCK_PROJECTS);
+  
+  React.useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const res = await api.get('/contractors/dashboard');
+        if (res.data) {
+          setStats({
+            totalCompleted: res.data.analytics?.totalCompleted || res.data.activeProjectsCount || MOCK_STATS.totalCompleted,
+            activeProjects: res.data.activeProjectsCount || 0,
+            cancelled: res.data.pendingProjectsCount || 0,
+            totalRevenue: res.data.revenue || 0,
+            utilizationRate: res.data.analytics?.teamPerformance || 92
+          });
+          
+          if (res.data.projects && res.data.projects.length > 0) {
+            const mappedProjects = res.data.projects.map((p: any) => ({
+              id: p._id.substring(p._id.length - 8).toUpperCase(),
+              title: p.title,
+              customer: 'RozgaarHub Client',
+              category: 'General',
+              type: 'Contract',
+              startDate: new Date(p.createdAt).toLocaleDateString(),
+              endDate: new Date(p.deadline).toLocaleDateString(),
+              status: p.status === 'completed' ? 'Completed' : p.status === 'active' ? 'In Progress' : 'Pending',
+              progress: p.completionProgress || 0,
+              teamSize: p.assignedWorkers?.length || 0,
+              team: [],
+              location: { address: 'Not Specified', distance: '-', area: '-' },
+              finances: {
+                customerPaid: p.budget || 0,
+                platformFee: (p.budget || 0) * 0.05,
+                contractorEarnings: (p.budget || 0) * 0.95,
+                teamPayment: (p.budget || 0) * 0.5,
+                profit: (p.budget || 0) * 0.45
+              },
+              feedback: null,
+              media: { images: 0, documents: 0 },
+              timeline: [
+                { step: "Project Created", completed: true },
+                { step: "Work In Progress", completed: p.completionProgress > 0 },
+                { step: "Project Completed", completed: p.status === 'completed' }
+              ]
+            }));
+            setProjects(mappedProjects);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load contractor dashboard data. Using mock.', err);
+      }
+    };
+    fetchDashboard();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -121,19 +178,19 @@ export default function ProjectHistory() {
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
           <CheckCircle2 className="w-6 h-6 text-emerald-500 mb-3" />
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Completed</p>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">{MOCK_STATS.totalCompleted}</p>
+          <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.totalCompleted}</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
           <Briefcase className="w-6 h-6 text-blue-500 mb-3" />
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Active Projects</p>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">{MOCK_STATS.activeProjects}</p>
+          <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.activeProjects}</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
           <XCircle className="w-6 h-6 text-red-500 mb-3" />
-          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Cancelled</p>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">{MOCK_STATS.cancelled}</p>
+          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Pending</p>
+          <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.cancelled}</p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-brand-amber/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
@@ -141,14 +198,14 @@ export default function ProjectHistory() {
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Total Revenue</p>
           <p className="text-3xl font-black text-gray-900 dark:text-white flex items-center">
             <span className="text-xl mr-1 text-brand-amber">₹</span>
-            {MOCK_STATS.totalRevenue.toLocaleString()}
+            {stats.totalRevenue.toLocaleString()}
           </p>
         </div>
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
           <Users className="w-6 h-6 text-indigo-500 mb-3" />
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Team Util.</p>
-          <p className="text-3xl font-black text-gray-900 dark:text-white">{MOCK_STATS.utilizationRate}%</p>
+          <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.utilizationRate}%</p>
         </div>
       </div>
 
@@ -179,7 +236,7 @@ export default function ProjectHistory() {
 
       {/* 📁 Project History List */}
       <div className="space-y-4">
-        {MOCK_PROJECTS.map((project) => {
+        {projects.filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase())).map((project) => {
           const isExpanded = expandedId === project.id;
 
           return (

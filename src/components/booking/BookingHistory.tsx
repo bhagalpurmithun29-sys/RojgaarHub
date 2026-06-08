@@ -184,6 +184,70 @@ export default function BookingHistory({ initialRole = 'customer' }: { initialRo
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null);
 
+  // Fetch real data from Backend MongoDB
+  useEffect(() => {
+    const fetchRealBookings = async () => {
+      try {
+        setIsLoading(true);
+        const res = await api.get('/bookings');
+        if (res.data && res.data.length > 0) {
+          const liveBookings: Booking[] = res.data.map((b: any) => {
+            
+            // Map raw DB status to UI Status
+            let mappedStatus: Status = 'Pending';
+            if (b.status === 'requested') mappedStatus = 'Pending';
+            if (b.status === 'accepted') mappedStatus = 'Accepted';
+            if (b.status === 'arrived') mappedStatus = 'Arrived';
+            if (b.status === 'work_started') mappedStatus = 'Work Started';
+            if (b.status === 'completed') mappedStatus = 'Completed';
+            if (b.status === 'cancelled') mappedStatus = 'Cancelled';
+            
+            return {
+              id: b._id,
+              shortId: `RZH-${b._id.substring(b._id.length - 5).toUpperCase()}`,
+              labour: {
+                name: b.labour?.name || 'Assigned Worker',
+                category: b.bookingType || 'General Service',
+                image: b.labour?.profileImage || 'https://i.pravatar.cc/150?u=worker',
+                experience: 'Verified Professional',
+                rating: 4.5,
+                verified: true
+              },
+              details: {
+                serviceType: b.bookingType,
+                bookingType: b.bookingType === 'Emergency' ? 'Emergency' : 'Hourly',
+                date: new Date(b.date).toLocaleDateString(),
+                time: b.timeSlot || '10:00 AM',
+                duration: 'As per requirement',
+                isEmergency: b.bookingType === 'Emergency'
+              },
+              location: {
+                address: b.address || 'Address pending',
+                area: 'Service Location'
+              },
+              payment: {
+                labourFee: b.totalAmount - 50,
+                platformFee: 50,
+                totalPaid: b.totalAmount || 1000,
+                method: 'Razorpay / Wallet',
+                status: mappedStatus === 'Completed' ? 'Paid' : 'Pending'
+              },
+              status: mappedStatus
+            };
+          });
+          
+          setBookings(liveBookings);
+        }
+      } catch (err) {
+        console.error('API Error: Failed to fetch live bookings. Falling back to mock data.', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchRealBookings();
+  }, []);
+
   // Load Razorpay Script
   useEffect(() => {
     const script = document.createElement('script');

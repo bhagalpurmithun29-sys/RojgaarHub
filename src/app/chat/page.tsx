@@ -111,6 +111,8 @@ const DUMMY_MESSAGES: Record<string, Message[]> = {
   ]
 };
 
+import api from '@/utils/api';
+
 export default function UnifiedCommunicationSystem() {
   const [activeTab, setActiveTab] = useState<'All' | 'Unread' | 'Active' | 'Completed' | 'Groups'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,7 +155,77 @@ export default function UnifiedCommunicationSystem() {
     return () => clearInterval(timer);
   }, [callState]);
 
-  const handleSendMessage = (e: React.FormEvent, type: Message['type'] = 'text', content: string = messageInput) => {
+  // FETCH CONVERSATIONS FROM BACKEND
+  const [conversations, setConversations] = useState<Chat[]>(DUMMY_CHATS);
+
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        const res = await api.get('/communication/conversations');
+        if (res.data && res.data.length > 0) {
+          const liveChats = res.data.map((c: any) => ({
+            id: c._id || c.id,
+            type: c.isGroup ? 'group' : 'direct',
+            participants: c.participants?.map((p: any) => ({
+              id: p._id,
+              name: p.name,
+              avatar: p.name?.substring(0, 2).toUpperCase() || 'U',
+              role: p.role || 'User',
+              phone: p.phone
+            })) || [],
+            name: c.name || c.participants?.find((p:any) => p._id !== 'me')?.name || 'Chat',
+            avatar: c.avatar || (c.name ? c.name.substring(0,2).toUpperCase() : 'C'),
+            online: true,
+            lastMessage: c.lastMessage?.text || 'No messages yet',
+            lastMessageTime: c.updatedAt ? new Date(c.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            unreadCount: c.unreadCount || 0,
+            category: c.category || 'General',
+            bookingStatus: c.bookingStatus,
+            bookingId: c.bookingId
+          }));
+          setConversations(liveChats);
+        }
+      } catch (err) {
+        console.error('Failed to load live conversations, using mock', err);
+      }
+    };
+    loadConversations();
+  }, []);
+
+  // FETCH MESSAGES FOR ACTIVE CHAT
+  useEffect(() => {
+    if (!activeChat) return;
+    
+    const loadMessages = async () => {
+      try {
+        const receiverId = activeChat.participants.find(p => p.id !== 'me')?.id || activeChat.id;
+        const res = await api.get(`/communication/chat/${receiverId}`);
+        if (res.data && res.data.length > 0) {
+          const liveMsgs = res.data.map((m: any) => ({
+            id: m._id,
+            senderId: m.sender?._id === 'me' ? 'me' : m.sender?._id, // Adapt to your auth logic
+            senderName: m.sender?.name,
+            text: m.text,
+            timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: m.status || 'delivered',
+            type: m.type || 'text',
+            fileUrl: m.fileUrl,
+            fileName: m.fileName,
+            isSpam: m.isSpam
+          }));
+          setMessages(prev => ({ ...prev, [activeChat.id]: liveMsgs }));
+        } else {
+           // If no messages from API but we selected a chat, maybe it's empty, or keep dummy for demo
+        }
+      } catch (err) {
+        console.error('Failed to load messages from backend', err);
+      }
+    };
+    
+    loadMessages();
+  }, [activeChat]);
+
+  const handleSendMessage = async (e: React.FormEvent, type: Message['type'] = 'text', content: string = messageInput) => {
     e.preventDefault();
     if (!content.trim() && type === 'text') return;
     if (!activeChat) return;
@@ -173,6 +245,7 @@ export default function UnifiedCommunicationSystem() {
       isSpam
     };
 
+    // Optimistic UI Update
     setMessages(prev => ({
       ...prev,
       [activeChat.id]: [...(prev[activeChat.id] || []), newMsg]
@@ -181,15 +254,35 @@ export default function UnifiedCommunicationSystem() {
     setMessageInput('');
     setShowAttachments(false);
 
-    // Simulate status update
-    setTimeout(() => {
+    // Send to Backend
+    try {
+      const receiverId = activeChat.participants.find(p => p.id !== 'me')?.id || activeChat.id;
+      await api.post('/communication/messages', {
+        receiverId,
+        text: type === 'text' ? content : undefined,
+        type,
+        isSpam
+      });
+      
+      // Update status to delivered
       setMessages(prev => {
         const chatMsgs = [...(prev[activeChat.id] || [])];
         const lastMsg = chatMsgs.find(m => m.id === newMsg.id);
         if (lastMsg) lastMsg.status = 'delivered';
         return { ...prev, [activeChat.id]: chatMsgs };
       });
-    }, 1000);
+    } catch (err) {
+      console.error('Failed to send message to backend', err);
+      // Fallback update status for demo
+      setTimeout(() => {
+        setMessages(prev => {
+          const chatMsgs = [...(prev[activeChat.id] || [])];
+          const lastMsg = chatMsgs.find(m => m.id === newMsg.id);
+          if (lastMsg) lastMsg.status = 'delivered';
+          return { ...prev, [activeChat.id]: chatMsgs };
+        });
+      }, 1000);
+    }
   };
 
   const handleSimulateIncomingCall = () => {
@@ -356,7 +449,7 @@ export default function UnifiedCommunicationSystem() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {DUMMY_CHATS.map(chat => (
+            {conversations.map(chat => (
               <button 
                 key={chat.id}
                 onClick={() => setActiveChat(chat)}

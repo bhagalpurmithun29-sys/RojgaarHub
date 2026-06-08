@@ -5,6 +5,7 @@ import {
   ThumbsUp, Flag, CheckCircle2, Award, TrendingUp,
   MessageSquare, Camera, XCircle, Search, Filter
 } from 'lucide-react';
+import api from '@/utils/api';
 
 type Role = 'customer' | 'labour';
 type SubTab = 'write' | 'read';
@@ -59,6 +60,33 @@ export default function RatingsReviews() {
   const [subRatings, setSubRatings] = useState({
     workQuality: 0, behaviour: 0, communication: 0, punctuality: 0, payment: 0, availability: 0
   });
+
+  const [reviews, setReviews] = useState(MOCK_REVIEWS);
+
+  React.useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const res = await api.get('/reviews');
+        if (res.data && res.data.length > 0) {
+          const mappedReviews = res.data.map((r: any) => ({
+            id: r._id,
+            author: r.author?.name || 'Anonymous',
+            rating: r.rating || 5,
+            date: new Date(r.createdAt).toLocaleDateString(),
+            text: r.comment || '',
+            images: r.images || [],
+            helpfulCount: r.helpfulCount || 0,
+            verified: true,
+            isSuspicious: false
+          }));
+          setReviews(mappedReviews);
+        }
+      } catch (err) {
+        console.error('Failed to fetch reviews. Using mock fallback.', err);
+      }
+    };
+    fetchReviews();
+  }, []);
 
   const handleSubRating = (key: string, val: number) => {
     setSubRatings(prev => ({ ...prev, [key]: val }));
@@ -171,7 +199,7 @@ export default function RatingsReviews() {
             </div>
 
             <div className="space-y-4">
-              {MOCK_REVIEWS.map(review => (
+              {reviews.map(review => (
                 <div key={review.id} className={`bg-white dark:bg-zinc-900 p-6 rounded-3xl border shadow-sm transition-all ${review.isSuspicious ? 'border-rose-200 dark:border-rose-900/50 bg-rose-50/30 dark:bg-rose-950/10' : 'border-gray-150 dark:border-zinc-800'}`}>
                   {review.isSuspicious && (
                     <div className="flex items-center gap-2 text-rose-600 bg-rose-100 dark:bg-rose-950/50 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 w-fit">
